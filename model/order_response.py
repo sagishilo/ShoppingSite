@@ -6,7 +6,7 @@ from model.item import Item
 
 class OrderResponse(BaseModel):
     order_id: Optional[int]
-    buyer_name: int
+    buyer_name: str
     order_date: datetime
     order_address: str
     total_price: float
