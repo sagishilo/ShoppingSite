@@ -1,0 +1,17 @@
+uvicorn==0.21.1
+fastapi==0.111.1
+pydantic==2.4.0
+databases==0.7.0
+sqlalchemy==1.4.47
+aiomysql
+httpx==0.23.0
+redis
+passlib==1.7.4
+bcrypt==4.0.1
+python-jose==3.3.0
+python-multipart==0.0.7
+streamlit==1.40.0
+numpy
+pandas
+matplotlib
+seaborn
