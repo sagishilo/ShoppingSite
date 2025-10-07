@@ -80,4 +80,5 @@ async def delete_user(user_id: int):
     query = f"DELETE FROM {TABLE_NAME} WHERE id= :user_id"
     values ={"user_id":user_id }
     await database.execute(query, values)
+    return user_id
 

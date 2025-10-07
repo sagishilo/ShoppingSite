@@ -46,7 +46,7 @@ async def create_user(user: User):
 ##Deletes a specific user and all votes they have made
 ## gets-> int (user id)
 ## returns -> str message
-@router.delete("/{user_id}", response_model=str)
+@router.delete("/{user_id}", response_model=int)
 async def delete_user(user_id: int):
     try:
         return await user_repository.delete_user(user_id)         ###################user_service
@@ -59,10 +59,11 @@ async def delete_user(user_id: int):
 ## Updates an existing user
 ## gets -> JSON of User
 ## returns -> User
-@router.put("/{user_id}", response_model=User)
+@router.put("/{user_id}", response_model=str)
 async def update_user(user_id: int, updated_user: User):
     try:
-        return await user_repository.update_user(user_id, updated_user)  ###################user_service
+        await user_repository.update_user(user_id, updated_user)  ###################user_service
+        return "Update succeeded"
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

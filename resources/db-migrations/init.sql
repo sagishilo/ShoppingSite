@@ -38,6 +38,7 @@ CREATE TABLE item_in_order(
 id INT(11) NOT NULL AUTO_INCREMENT,
 order_id INT(11) NOT NULL,
 item_id INT(11) NOT NULL,
+amount_in_order INT (11) NOT NULL,
 PRIMARY KEY (id),
 FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
 FOREIGN KEY (item_id) REFERENCES item(id) ON DELETE CASCADE
