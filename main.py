@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 from controller.user_controller import router as user_router
+from controller.item_controller import router as item_router
+from controller.order_controller import router as order_router
+from controller.item_in_order_controller import router as iio_router
+
 
 from repository.database import database
 
@@ -15,3 +19,7 @@ async def shutdown():
 
 
 app.include_router(user_router)
+app.include_router(item_router)
+app.include_router(order_router)
+app.include_router(iio_router)
+
