@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, HTTPException
 from model.item import Item
+from model.item_request import ItemRequest
 from repository import item_repository
 
 router = APIRouter(prefix="/item", tags=["item"])
@@ -9,10 +10,10 @@ router = APIRouter(prefix="/item", tags=["item"])
 ## Returns an item by id
 ## gets -> int
 ## returns -> Item
-@router.get("/{item_id}", response_model=Item)
-async def get_item(item_id: int):
+@router.get("/{id}", response_model=Item)
+async def get_item(id: int):
     try:
-        item = await item_repository.get_by_id(item_id)
+        item = await item_repository.get_by_id(id)
         return item
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -32,7 +33,7 @@ async def get_items():
 ## gets -> JSON of Item
 ## returns -> int (item id)
 @router.post("/", response_model=int)
-async def create_item(item: Item):
+async def create_item(item: ItemRequest):
     try:
         new_item_id = await item_repository.create_item(item)
         return new_item_id
@@ -43,10 +44,10 @@ async def create_item(item: Item):
 ## Updates an existing item
 ## gets -> JSON of Item
 ## returns -> str message
-@router.put("/{item_id}", response_model=str)
-async def update_item(item_id: int, updated_item: Item):
+@router.put("/{id}", response_model=str)
+async def update_item(id: int, updated_item: ItemRequest):
     try:
-        await item_repository.update_item(item_id, updated_item)
+        await item_repository.update_item(id, updated_item)
         return "Update succeeded"
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -55,7 +56,7 @@ async def update_item(item_id: int, updated_item: Item):
 ## Deletes a specific item
 ## gets -> int (item id)
 ## returns -> int (deleted item id)
-@router.delete("/{item_id}", response_model=int)
+@router.delete("/{id}", response_model=int)
 async def delete_item(item_id: int):
     try:
         deleted_id = await item_repository.delete_item(item_id)

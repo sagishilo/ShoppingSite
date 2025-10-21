@@ -2,7 +2,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class User (BaseModel):
+class UserRequest (BaseModel):
     id: Optional[int] = None
     first_name: str
     last_name: str
@@ -10,4 +10,4 @@ class User (BaseModel):
     phone: str
     address: str
     user_name: str
-    hashed_password: str
+    password: str

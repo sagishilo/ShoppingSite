@@ -31,7 +31,7 @@ async def get_items_by_order_id(order_id: int):
 
 
 ## Adds a new item to an order
-## gets -> order_id, item_id, amount_in_order
+## gets -> order_id, id, amount_in_order
 ## returns -> int (new item_in_order id)
 @router.post("/")
 async def add_item_to_order(order_id: int, item_id: int, amount_in_order: int):

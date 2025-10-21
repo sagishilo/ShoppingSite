@@ -2,6 +2,7 @@ from typing import List
 from fastapi import HTTPException
 from fastapi import APIRouter
 from model.user import User
+from model.user_request import UserRequest
 from repository import user_repository
 
 router = APIRouter(prefix="/user", tags=["user"])
@@ -34,10 +35,10 @@ async def get_users():
 ## gets-> JSON of User
 ## returns -> int (user id)
 @router.post("/")
-async def create_user(user: User):
+async def create_user(user: UserRequest):
     try:
-        print("this is user " + str(dict(user)))
-        return await user_repository.create_user(user)        ###################user_service
+        print("this is user " + str(user.model_dump()))
+        return await user_repository.create_user(user, user.password)        ###################user_service
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -60,9 +61,9 @@ async def delete_user(user_id: int):
 ## gets -> JSON of User
 ## returns -> User
 @router.put("/{user_id}", response_model=str)
-async def update_user(user_id: int, updated_user: User):
+async def update_user(user_id: int, updated_user: UserRequest):
     try:
-        await user_repository.update_user(user_id, updated_user)  ###################user_service
+        await user_repository.update_user(user_id, updated_user, updated_user.password)  ###################user_service
         return "Update succeeded"
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

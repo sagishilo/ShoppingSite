@@ -10,4 +10,4 @@ class Config (BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: str = "6379"
     REDIS_TTL: int = 100
-    DATABASE_URL: str = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
+    DATABASE_URL: str = f"mysql+aiomysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
