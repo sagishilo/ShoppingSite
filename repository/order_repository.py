@@ -81,24 +81,75 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
 
 
 ## Returns all orders
-async def get_all() -> List[Order]:
-    query = f"""
-    SELECT *
-    FROM {TABLE_NAME}
+async def get_all() -> List[OrderResponse]:
+    query_orders = f"""
+        SELECT 
+            orders.id AS order_id,
+            orders.order_date,
+            orders.order_address,
+            users.first_name,
+            users.last_name,
+            users.email,
+            users.phone,
+            users.address AS user_address,
+            users.user_name
+        FROM {TABLE_NAME}
+        JOIN users ON orders.buyer_id = users.id;
     """
-    result = await database.fetch_all(query)
-    orders = []
+    orders_rows = await database.fetch_all(query_orders)
+    all_orders = []
 
-    for row in result:
-        row_dict = dict(row)
-        status_value = row_dict.get("order_status")
-        if isinstance(status_value, str):
-            if status_value.startswith("OrderStatus."):
-                status_value = status_value.split(".")[1].lower()
-            row_dict["order_status"] = OrderStatus(status_value)
-        orders.append(Order(**row_dict))
+    for order_row in orders_rows:
+        query_items = """
+            SELECT 
+                item.id,
+                item.item_name,
+                item.price,
+                item.amount_in_stock,
+                item_in_order.amount_in_order
+            FROM item_in_order
+            JOIN item ON item_in_order.item_id = item.id
+            WHERE item_in_order.order_id = :order_id;
+        """
+        item_rows = await database.fetch_all(query_items, values={"order_id": order_row["order_id"]})
 
-    return orders
+        order_items = []
+        total_price = 0.0
+        total_amount = 0
+
+        for row in item_rows:
+            item_instance = Item(
+                id=row["id"],
+                item_name=row["item_name"],
+                price=row["price"],
+                amount_in_stock=row["amount_in_stock"]
+            )
+            order_items.append(item_instance)
+            total_price += float(row["price"]) * row["amount_in_order"]
+            total_amount += row["amount_in_order"]
+
+        customer_instance = UserResponse(
+            first_name=order_row["first_name"],
+            last_name=order_row["last_name"],
+            email=order_row["email"],
+            phone=order_row["phone"],
+            address=order_row["user_address"],
+            user_name=order_row["user_name"]
+        )
+
+        all_orders.append(
+            OrderResponse(
+                Customer=customer_instance,
+                order_id=order_row["order_id"],
+                order_date=order_row["order_date"],
+                order_address=order_row["order_address"],
+                total_price=total_price,
+                order_items=order_items,
+                item_amount=total_amount
+            )
+        )
+
+    return all_orders
 
 
 

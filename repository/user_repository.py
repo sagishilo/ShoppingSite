@@ -1,32 +1,44 @@
-from typing import Optional, List
-from model.user import User
+from typing import Optional
 from model.user_request import UserRequest
+from model.user_response import UserResponse
 from repository.database import database
 
 TABLE_NAME = "users"
 
 ## Returns a user by id
-async def get_by_id(user_id: int) ->Optional[User]:
+
+async def get_by_id(user_id: int):
     query = f"""
-    SELECT *
-    FROM {TABLE_NAME}
-    WHERE id = :user_id;
+        SELECT 
+            first_name,
+            last_name,
+            email,
+            phone,
+            address,
+            user_name
+        FROM {TABLE_NAME}
+        WHERE id = :user_id;
     """
-    result = await database.fetch_one(query, values={"user_id": user_id})
-    if result:
-        return User(**result)
-    else:
-        return None
+    user_row = await database.fetch_one(query, values={"user_id": user_id})
+    return UserResponse(**user_row)
+
 
 
 ## Returns all users
-async def get_all() ->List[User]:
+async def get_all():
     query = f"""
-    SELECT *
-    FROM {TABLE_NAME}
-    """
+            SELECT 
+                first_name,
+                last_name,
+                email,
+                phone,
+                address,
+                user_name
+            FROM {TABLE_NAME}
+            """
     result = await database.fetch_all(query)
-    return result
+    users = [UserResponse(**dict(row)) for row in result]
+    return users
 
 
 ## Creates a new user
@@ -71,3 +83,21 @@ async def delete_user(user_id: int):
     await database.execute(query, values)
     return user_id
 
+
+## Returns a user by user_name
+async def get_by_user_name(user_name: str) -> Optional[UserResponse]:
+    query = f"""
+            SELECT 
+            first_name,
+            last_name,
+            email,
+            phone,
+            address,
+            user_name
+            FROM {TABLE_NAME}
+            WHERE user_name = :user_name;
+            """
+    user_row = await database.fetch_one(query, values={"user_name": user_name})
+    if user_row:
+        return UserResponse(**user_row)
+    return None
