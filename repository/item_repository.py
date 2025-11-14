@@ -20,6 +20,19 @@ async def get_by_id(id: int) ->Optional[Item]:
         return None
 
 
+## Returns an item by name
+async def get_by_name(item_name: str) ->Optional[Item]:
+    query = f"""
+    SELECT *
+    FROM {TABLE_NAME}
+    WHERE item_name = :item_name;
+    """
+    result = await database.fetch_one(query, values={"item_name": item_name})
+    if result:
+        return Item(**result)
+    else:
+        return None
+
 
 ## Returns all items
 async def get_all() ->List[Item]:
@@ -28,7 +41,8 @@ async def get_all() ->List[Item]:
     FROM {TABLE_NAME}
     """
     result = await database.fetch_all(query)
-    return result
+    items = [Item(**dict(row)) for row in result]
+    return items
 
 
 ## Creates a new item

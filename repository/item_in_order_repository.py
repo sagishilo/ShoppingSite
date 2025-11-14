@@ -1,5 +1,6 @@
 from typing import Optional
 
+from model.item_in_order_response import ItemInOrderResponse
 from repository.database import database
 
 TABLE_NAME = "item_in_order"
@@ -21,7 +22,7 @@ async def get_by_id(item_in_order_id: int):
     """
     result = await database.fetch_one(query, values={"item_in_order_id": item_in_order_id})
     if result:
-        return result
+        return ItemInOrderResponse(**result)
     else:
         return None
 
@@ -43,8 +44,8 @@ async def get_all_by_order_id(order_id: int):
     """
 
     results = await database.fetch_all(query, {"order_id": order_id})
-    return results
-
+    iio = [ItemInOrderResponse(**dict(row)) for row in results]
+    return iio
 
 
 async def add_item_to_order(order_id: int, item_id: int, amount_in_order: int) -> Optional[int]:
@@ -86,3 +87,10 @@ async def delete_item_in_order_by_id(item_in_order_id: int) -> Optional[int]:
     values = {"item_in_order_id": item_in_order_id}
     rows_deleted = await database.execute(query=query, values=values)
     return rows_deleted
+
+
+async def item_deleted(item_id: int):
+    query = """
+    DELETE * FROM item_in_order
+    WHERE item_id = :item_id;
+    """
