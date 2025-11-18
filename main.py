@@ -18,6 +18,10 @@ async def shutdown():
     await database.disconnect()
 
 
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
+
 app.include_router(user_router)
 app.include_router(item_router)
 app.include_router(order_router)
