@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from model.item import Item
 from model.item_request import ItemRequest
@@ -48,7 +48,7 @@ async def get_items():
 ## Creates a new item
 ## gets -> JSON of Item
 ## returns -> int (item id)
-@router.post("/", response_model=int)
+@router.post("/", response_model=Optional[int])
 async def create_item(item: ItemRequest):
     try:
         new_item_id = await item_service.create_item(item)
@@ -72,7 +72,7 @@ async def update_item(id: int, updated_item: ItemRequest):
 ## Deletes a specific item
 ## gets -> int (item id)
 ## returns -> int (deleted item id)
-@router.delete("/{id}", response_model=int)
+@router.delete("/{id}", response_model=str)
 async def delete_item(item_id: int):
     try:
         deleted_id = await item_service.delete_item(item_id)

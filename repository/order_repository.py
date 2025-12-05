@@ -222,14 +222,13 @@ async def delete_order(order_id: int):
     return order_id
 
 
-## Returns temp order by user id if exist
 async def get_temp_order_by_user(buyer_id: int) -> Optional[Order]:
     query = f"""
     SELECT *
     FROM {TABLE_NAME}
-    WHERE buyer_id= :buyer_id AND order_status = TEMP
+    WHERE buyer_id = :buyer_id AND order_status = "temp"
     """
     result = await database.fetch_one(query, values={"buyer_id": buyer_id})
     if result:
-        return Order(**result)
+        return Order(**dict(result))
     return None

@@ -44,7 +44,7 @@ async def get_all() -> List[Item]:
 
 async def create_item(new_item: ItemRequest):
     if await validate_unique_item_name(new_item.item_name):
-        await item_repository.create_item(new_item)
+        return await item_repository.create_item(new_item)
     else:
         raise ex.itemname_taken_exception()
 

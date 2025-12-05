@@ -55,13 +55,13 @@ async def get_all() -> List[UserResponse]:
 
 
 
-
 ## Checks if the wanted user exists
 ## If it doesn't - Creates a new user
-async def create_user(new_user: UserRequest):
+async def create_user(new_user: UserRequest) -> int:
     if await validate_unique_user_name(new_user.user_name):
         hashed_password = get_password_hash(new_user.password)
-        await user_repository.create_user(new_user, hashed_password)
+        user_id = await user_repository.create_user(new_user, hashed_password)
+        return user_id
     else:
         print("username is already existing")
         raise ex.username_taken_exception()

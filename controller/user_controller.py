@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import HTTPException
 from fastapi import APIRouter
-from model.user import User
+from model.user_response import UserResponse
 from model.user_request import UserRequest
 from service import user_service
 
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/user", tags=["user"])
 ## Returns user
 ## gets-> int
 ## returns -> User
-@router.get("/{user_id}", response_model=User)
+@router.get("/{user_id}", response_model=UserResponse)
 async def get_user(user_id: int):
     try:
         return await user_service.get_by_id(user_id)
@@ -20,7 +20,7 @@ async def get_user(user_id: int):
 
 ##Returns all users
 ## returns -> List of Users
-@router.get("/", response_model=List[User])
+@router.get("/", response_model=List[UserResponse])
 async def get_users():
     try:
         return await user_service.get_all()
@@ -35,7 +35,7 @@ async def get_users():
 @router.post("/")
 async def create_user(user: UserRequest):
     try:
-        print("this is user " + str(user.model_dump()))
+        ##print("this is user " + str(user.model_dump()))
         return await user_service.create_user(user)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -45,7 +45,7 @@ async def create_user(user: UserRequest):
 ##Deletes a specific user and all votes they have made
 ## gets-> int (user id)
 ## returns -> str message
-@router.delete("/{user_id}", response_model=int)
+@router.delete("/{user_id}", response_model=str)
 async def delete_user(user_id: int):
     try:
         return await user_service.delete_user(user_id)

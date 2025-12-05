@@ -46,7 +46,7 @@ async def get_all() ->List[Item]:
 
 
 ## Creates a new item
-async def create_item(new_item: ItemRequest) -> int:
+async def create_item(new_item: ItemRequest) -> Optional[int]:
     query = f"""
     INSERT INTO {TABLE_NAME} (item_name, price, amount_in_stock)
     VALUES (:item_name, :price, :amount_in_stock)
@@ -56,9 +56,10 @@ async def create_item(new_item: ItemRequest) -> int:
         "price": new_item.price,
         "amount_in_stock": new_item.amount_in_stock
     }
+    await database.execute(query, values)
+    row = await database.fetch_one("SELECT LAST_INSERT_ID() AS id")
+    return row["id"]
 
-    last_record_id = await database.execute(query, values)
-    return last_record_id
 
 
 ## Updates an existing item
