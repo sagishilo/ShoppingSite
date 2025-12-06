@@ -20,18 +20,18 @@ async def get_by_id(id: int) ->Optional[Item]:
         return None
 
 
-## Returns an item by name
-async def get_by_name(item_name: str) ->Optional[Item]:
+## Returns an items by partial name
+async def get_by_name(item_name: str) -> list[Item]:
     query = f"""
     SELECT *
     FROM {TABLE_NAME}
-    WHERE item_name = :item_name;
+    WHERE item_name LIKE :item_name;
     """
-    result = await database.fetch_one(query, values={"item_name": item_name})
-    if result:
-        return Item(**result)
-    else:
-        return None
+
+    search_value = f"%{item_name}%"
+
+    results = await database.fetch_all(query, values={"item_name": search_value})
+    return [Item(**row) for row in results]
 
 
 ## Returns all items

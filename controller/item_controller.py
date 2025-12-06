@@ -23,14 +23,13 @@ async def get_item_by_id(id: int):
 ## Returns an item by name
 ## gets -> str
 ## returns -> Item
-@router.get("/item_name", response_model=Item)
+@router.get("/item_name/{item_name}", response_model=List[Item])
 async def get_item_by_name(item_name: str):
     try:
-        item = await item_service.get_item_by_name(item_name)
-        return item
+        items = await item_service.get_items_by_name(item_name)
+        return items
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
 
 
 
@@ -73,9 +72,9 @@ async def update_item(id: int, updated_item: ItemRequest):
 ## gets -> int (item id)
 ## returns -> int (deleted item id)
 @router.delete("/{id}", response_model=str)
-async def delete_item(item_id: int):
+async def delete_item(id: int):
     try:
-        deleted_id = await item_service.delete_item(item_id)
+        deleted_id = await item_service.delete_item(id)
         return deleted_id
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

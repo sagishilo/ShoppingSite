@@ -42,9 +42,6 @@ async def get_order_by_id(order_id: int) -> OrderResponse:
 
 
 ## Returns all orders
-async def get_all_orders() -> List[OrderResponse]:
-    return await order_repository.get_all()
-
 ## Returns all orders for a specific user
 ## Raises an exception if user not found
 async def get_all_orders_by_user(buyer_id: int) -> List[Order]:
@@ -60,6 +57,9 @@ async def create_order(new_order: OrderRequest) -> int:
         raise ex.user_not_found_exception()
     if not await validate_order_status(new_order.order_status.value):
         raise ex.invalid_order_status_exception()
+    if new_order.order_status.value == "temp":
+        if await order_repository.get_temp_order_by_user(new_order.buyer_id) is not None:
+            raise ex.temp_order_exist()
     return await order_repository.create_order(new_order)
 
 

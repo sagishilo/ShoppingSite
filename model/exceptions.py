@@ -57,3 +57,9 @@ class CustomExceptions:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Provided item was not found in the order"
         )
+
+    def temp_order_exist(self):
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This user has an open order already"
+        )

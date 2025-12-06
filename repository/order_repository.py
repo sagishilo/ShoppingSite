@@ -16,8 +16,11 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
     query_order = """
             SELECT 
                 orders.id AS order_id,
+                orders.buyer_id,
+                orders.order_status,
                 orders.order_date,
                 orders.order_address,
+                users.id AS user_id,
                 users.first_name,
                 users.last_name,
                 users.email,
@@ -61,6 +64,7 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
         total_amount += row["amount_in_order"]
 
     customer_instance = UserResponse(
+        user_id=order_row["buyer_id"],
         first_name=order_row["first_name"],
         last_name=order_row["last_name"],
         email=order_row["email"],
@@ -70,23 +74,27 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
     )
 
     return OrderResponse(
-        Customer=customer_instance,
         order_id=order_row["order_id"],
+        order_status=order_row["order_status"],
+        Customer=customer_instance,
         order_date=order_row["order_date"],
         order_address=order_row["order_address"],
         total_price=total_price,
         order_items=order_items,
         item_amount=total_amount
-    )
+)
 
 
-## Returns all orders
+
 async def get_all() -> List[OrderResponse]:
     query_orders = f"""
         SELECT 
             orders.id AS order_id,
+            orders.buyer_id,
+            orders.order_status,
             orders.order_date,
             orders.order_address,
+            users.id AS user_id,
             users.first_name,
             users.last_name,
             users.email,
@@ -129,6 +137,7 @@ async def get_all() -> List[OrderResponse]:
             total_amount += row["amount_in_order"]
 
         customer_instance = UserResponse(
+            user_id=order_row["user_id"],
             first_name=order_row["first_name"],
             last_name=order_row["last_name"],
             email=order_row["email"],
@@ -139,8 +148,9 @@ async def get_all() -> List[OrderResponse]:
 
         all_orders.append(
             OrderResponse(
+                id=order_row["order_id"],
+                order_status=order_row["order_status"],
                 Customer=customer_instance,
-                order_id=order_row["order_id"],
                 order_date=order_row["order_date"],
                 order_address=order_row["order_address"],
                 total_price=total_price,
@@ -150,7 +160,6 @@ async def get_all() -> List[OrderResponse]:
         )
 
     return all_orders
-
 
 
 ## Returns all orders by user id
@@ -184,7 +193,7 @@ async def create_order(new_order: OrderRequest) -> int:
         "buyer_id": new_order.buyer_id,
         "order_date": new_order.order_date,
         "order_address": new_order.order_address,
-        "order_status": new_order.order_status
+        "order_status": new_order.order_status.value
     }
 
     last_record_id = await database.execute(query, values)
@@ -205,7 +214,7 @@ async def update_order(order_id: int, updated_order: Order) -> int:
         "buyer_id": updated_order.buyer_id,
         "order_date": updated_order.order_date,
         "order_address": updated_order.order_address,
-        "order_status": updated_order.order_status,
+        "order_status": updated_order.order_status.value,
         "order_id": order_id,
     }
 
@@ -226,9 +235,12 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[Order]:
     query = f"""
     SELECT *
     FROM {TABLE_NAME}
-    WHERE buyer_id = :buyer_id AND order_status = "temp"
+    WHERE buyer_id = :buyer_id AND LOWER (order_status) = :status
     """
-    result = await database.fetch_one(query, values={"buyer_id": buyer_id})
+    result = await database.fetch_one(
+        query,
+        values={"buyer_id": buyer_id, "status": "temp"}
+    )
     if result:
         return Order(**dict(result))
     return None

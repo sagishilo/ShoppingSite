@@ -9,6 +9,7 @@ TABLE_NAME = "users"
 async def get_by_id(user_id: int) -> Optional[UserResponse]:
     query = f"""
         SELECT 
+            id AS user_id,
             first_name,
             last_name,
             email,
@@ -28,6 +29,7 @@ async def get_by_id(user_id: int) -> Optional[UserResponse]:
 async def get_all():
     query = f"""
         SELECT 
+            id AS user_id,
             first_name,
             last_name,
             email,
@@ -71,7 +73,7 @@ async def update_user(user_id: int, updated_user: UserRequest, hashed_password: 
     """
     user_dict = updated_user.model_dump()
     user_dict.pop("password", None)
-
+    user_dict.pop("id", None)
     values = {**user_dict, "hashed_password": hashed_password, "user_id": user_id}
 
     async with database.transaction():

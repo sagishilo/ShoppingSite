@@ -18,11 +18,11 @@ async def validate_unique_item_name(item_name: str) -> bool:
 
 ##Checks if the wanted item name exists
 ## If it does - Return item by name
-async def get_item_by_name(item_name: str) -> Item:
-    item= await item_repository.get_by_name(item_name)
-    if not item:
+async def get_items_by_name(item_name: str) -> List[Item]:
+    item_list= await item_repository.get_by_name(item_name)
+    if not item_list:
         raise ex.item_not_found_exception()
-    return item
+    return item_list
 
 
 ##Checks if the wanted item id exists
