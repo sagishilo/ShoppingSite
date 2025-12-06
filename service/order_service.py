@@ -32,6 +32,11 @@ async def validate_order_status(status: str) -> bool:
     except ValueError:
         return False
 
+## Returns all orders
+async def get_all() -> List[OrderResponse]:
+    orders_list= await order_repository.get_all()
+    return orders_list
+
 ## Returns an order by id
 ## Raises an exception if order is not found
 async def get_order_by_id(order_id: int) -> OrderResponse:

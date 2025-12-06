@@ -22,11 +22,11 @@ async def get_order(order_id: int):
 
 
 ## Returns all orders
-## returns -> List[Order]
-@router.get("/", response_model=List[Order])
+## returns -> List[OrderResponse]
+@router.get("/", response_model=List[OrderResponse])
 async def get_orders():
     try:
-        return await order_service.get_all_orders()
+        return await order_service.get_all()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

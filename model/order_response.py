@@ -6,14 +6,11 @@ from typing import List
 
 
 class OrderResponse(BaseModel):
-    Customer: UserResponse
-    order_id: int = Field(alias="id")
+    customer: UserResponse
+    id: int
     order_status: str
     order_date: datetime
     order_address: str
-    total_price: float
     order_items: List[Item]
+    total_price: float
     item_amount: int
-    class Config:
-        allow_population_by_field_name = True
-        populate_by_name = True

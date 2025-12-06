@@ -74,9 +74,9 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
     )
 
     return OrderResponse(
-        order_id=order_row["order_id"],
+        id=order_row["order_id"],
         order_status=order_row["order_status"],
-        Customer=customer_instance,
+        customer=customer_instance,
         order_date=order_row["order_date"],
         order_address=order_row["order_address"],
         total_price=total_price,
@@ -150,7 +150,7 @@ async def get_all() -> List[OrderResponse]:
             OrderResponse(
                 id=order_row["order_id"],
                 order_status=order_row["order_status"],
-                Customer=customer_instance,
+                customer=customer_instance,
                 order_date=order_row["order_date"],
                 order_address=order_row["order_address"],
                 total_price=total_price,
