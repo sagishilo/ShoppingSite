@@ -1,5 +1,5 @@
 from typing import Optional
-
+from model.item_in_order import ItemInOrder
 from model.item_in_order_response import ItemInOrderResponse
 from repository.database import database
 
@@ -26,6 +26,15 @@ async def get_by_id(item_in_order_id: int):
     else:
         return None
 
+async def is_in_order(item_id: int, order_id: int) -> bool:
+    query = f"""
+        SELECT * FROM {TABLE_NAME} 
+        WHERE order_id = :order_id AND item_id = :item_id;
+    """
+    results = await database.fetch_all(query, {"item_id": item_id, "order_id": order_id})
+    return bool(results)
+
+
 
 
 async def get_all_by_order_id(order_id: int):
@@ -48,15 +57,15 @@ async def get_all_by_order_id(order_id: int):
     return iio
 
 
-async def add_item_to_order(order_id: int, item_id: int, amount_in_order: int) -> Optional[int]:
+async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
     query = f"""
-    INSERT INTO {TABLE_NAME} (order_id, id, amount_in_order)
-    VALUES (:order_id, :id, :amount_in_order);
+    INSERT INTO {TABLE_NAME} (order_id, item_id, amount_in_order)
+    VALUES (:order_id, :item_id, :amount_in_order);
     """
     values = {
-        "order_id": order_id,
-        "id": item_id,
-        "amount_in_order": amount_in_order
+        "order_id": item.order_id,
+        "item_id": item.item_id,
+        "amount_in_order": item.amount_in_order
     }
     new_iio_id = await database.execute(query=query, values=values)
     return new_iio_id

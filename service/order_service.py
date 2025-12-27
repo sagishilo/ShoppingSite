@@ -49,7 +49,7 @@ async def get_order_by_id(order_id: int) -> OrderResponse:
 ## Returns all orders
 ## Returns all orders for a specific user
 ## Raises an exception if user not found
-async def get_all_orders_by_user(buyer_id: int) -> List[Order]:
+async def get_all_orders_by_user(buyer_id: int) -> List[OrderResponse]:
     if not await validate_user_exists(buyer_id):
         raise ex.user_not_found_exception()
     return await order_repository.get_all_by_user(buyer_id)
@@ -96,9 +96,9 @@ async def delete_order(order_id: int) -> Optional[str]:
 
 
 ##gets the open order by user id
-async def get_temp_order_id_by_user(buyer_id: int) -> Optional[int]:
+async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
     temp_order=await order_repository.get_temp_order_by_user(buyer_id)
     if temp_order is not None:
-        return temp_order.id
+        return temp_order
     else:
         return None

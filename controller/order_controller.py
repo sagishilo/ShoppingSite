@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from model.order import Order
 from model.order_request import OrderRequest
@@ -34,7 +34,7 @@ async def get_orders():
 ## Returns all orders for user
 ## Gets a user ID -> int
 ## returns -> List[Order]
-@router.get("/user/{user_id}", response_model=List[Order])
+@router.get("/user/{user_id}", response_model=List[OrderResponse])
 async def get_orders_for_user(user_id: int):
     try:
         return await order_service.get_all_orders_by_user(user_id)
@@ -75,5 +75,18 @@ async def delete_order(order_id: int):
     try:
         deleted_id = await order_service.delete_order(order_id)
         return deleted_id
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+## Returns a temp order by id
+## gets -> int
+## returns -> OrderResponse
+@router.get("/user/temp/{buyer_id}", response_model=Optional[OrderResponse])
+async def get_temp_order_by_buyer(buyer_id: int):
+    try:
+        order = await order_service.get_temp_order_by_user(buyer_id)
+        return order
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

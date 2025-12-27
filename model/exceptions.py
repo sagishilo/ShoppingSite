@@ -63,3 +63,10 @@ class CustomExceptions:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="This user has an open order already"
         )
+
+    def closed_order(self):
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unable to add items to a closed order"
+        )
+

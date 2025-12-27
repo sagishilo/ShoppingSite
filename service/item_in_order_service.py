@@ -1,8 +1,13 @@
+from multiprocessing.pool import CLOSE
+from typing import List, Optional
 
-from typing import List
+from model.item_in_order import ItemInOrder
 from model.item_in_order_response import ItemInOrderResponse
+from model.order_status import OrderStatus
 from repository import item_in_order_repository
 from model.exceptions import CustomExceptions
+from service import order_service
+
 ex = CustomExceptions()
 
 ## Checks if an item in order exists by its id
@@ -28,8 +33,15 @@ async def get_all_items_by_order_id(order_id: int) -> List[ItemInOrderResponse]:
 
 ## Adds a new item to an order
 ## Returns the id of the newly created item_in_order record
-async def add_item_to_order(order_id: int, item_id: int, amount_in_order: int) -> int:
-    return await item_in_order_repository.add_item_to_order(order_id, item_id, amount_in_order)
+async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
+    order = await order_service.get_order_by_id(item.order_id)
+    if order.order_status=="close":
+        raise ex.closed_order()
+    is_in_order=await item_in_order_repository.is_in_order(item.item_id,item.order_id)
+    if is_in_order:
+        await update_item_amount_in_order()
+
+    return await item_in_order_repository.add_item_to_order(item)
 
 
 ## Updates the amount of an item in order
