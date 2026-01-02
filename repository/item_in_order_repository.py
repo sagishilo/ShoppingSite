@@ -1,39 +1,56 @@
 from typing import Optional
 from model.item_in_order import ItemInOrder
 from model.item_in_order_response import ItemInOrderResponse
+from model.item_response import ItemResponse
 from repository.database import database
 
 TABLE_NAME = "item_in_order"
 
 async def get_by_id(item_in_order_id: int):
-    query = f"""
+    query = """
     SELECT 
-    item_in_order.id AS item_in_order_id,
-    item.item_name,
-    item.price,
-    item.amount_in_stock,
-    item.id AS id,
-    item_in_order.amount_in_order,
-    (item.price * item_in_order.amount_in_order) AS total_price_in_order
-    FROM {TABLE_NAME}
-    JOIN item ON item_in_order.id = item.id
-    JOIN orders ON item_in_order.order_id = orders.id
+        item_in_order.order_id,
+        item.id AS item_id,
+        item.item_name,
+        item.price,
+        item.amount_in_stock,
+        item_in_order.amount_in_order,
+        (item.price * item_in_order.amount_in_order) AS total_price
+    FROM item_in_order
+    JOIN item ON item_in_order.item_id = item.id
     WHERE item_in_order.id = :item_in_order_id;
     """
-    result = await database.fetch_one(query, values={"item_in_order_id": item_in_order_id})
-    if result:
-        return ItemInOrderResponse(**result)
-    else:
+
+    row = await database.fetch_one(query, {"item_in_order_id": item_in_order_id})
+    if not row:
         return None
 
-async def is_in_order(item_id: int, order_id: int) -> bool:
+    row = dict(row)
+
+    item = ItemResponse(
+        item_name=row["item_name"],
+        price=float(row["price"])
+    )
+
+    return ItemInOrderResponse(
+        order_id=int(row["order_id"]),
+        item=item,
+        amount_in_order=int(row["amount_in_order"]),
+        total_price=float(row["total_price"]),
+    )
+
+
+
+async def is_in_order(item_id: int, order_id: int):
     query = f"""
         SELECT * FROM {TABLE_NAME} 
         WHERE order_id = :order_id AND item_id = :item_id;
     """
-    results = await database.fetch_all(query, {"item_id": item_id, "order_id": order_id})
-    return bool(results)
-
+    results = await database.fetch_one(query, {"item_id": item_id, "order_id": order_id})
+    if results:
+        return ItemInOrder(**dict(results))
+    else:
+        return None
 
 
 
@@ -48,7 +65,7 @@ async def get_all_by_order_id(order_id: int):
         item_in_order.amount_in_order AS amount_in_order,
         (item.price * item_in_order.amount_in_order) AS total_price_in_order
     FROM {TABLE_NAME}
-    JOIN item ON item_in_order.id = item.id
+    JOIN item ON item_in_order.item_id = item.id
     WHERE item_in_order.order_id = :order_id;
     """
 
@@ -98,8 +115,10 @@ async def delete_item_in_order_by_id(item_in_order_id: int) -> Optional[int]:
     return rows_deleted
 
 
-async def item_deleted(item_id: int):
+async def item_deleted(item_id: int) -> int:
     query = """
-    DELETE * FROM item_in_order
+    DELETE FROM item_in_order
     WHERE item_id = :item_id;
     """
+    return await database.execute(query, {"item_id": item_id})
+

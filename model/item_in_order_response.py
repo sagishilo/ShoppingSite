@@ -8,4 +8,5 @@ class ItemInOrderResponse(BaseModel):
     item: ItemResponse
     amount_in_order: int
     total_price: float
+    order_id: int
 

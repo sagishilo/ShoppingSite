@@ -1,11 +1,10 @@
-from multiprocessing.pool import CLOSE
 from typing import List, Optional
 
 from model.item_in_order import ItemInOrder
 from model.item_in_order_response import ItemInOrderResponse
-from model.order_status import OrderStatus
 from repository import item_in_order_repository
 from model.exceptions import CustomExceptions
+from repository.item_in_order_repository import is_in_order
 from service import order_service
 
 ex = CustomExceptions()
@@ -35,21 +34,22 @@ async def get_all_items_by_order_id(order_id: int) -> List[ItemInOrderResponse]:
 ## Returns the id of the newly created item_in_order record
 async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
     order = await order_service.get_order_by_id(item.order_id)
-    if order.order_status=="close":
+    if order.order_status == "close":
         raise ex.closed_order()
-    is_in_order=await item_in_order_repository.is_in_order(item.item_id,item.order_id)
-    if is_in_order:
-        await update_item_amount_in_order()
-
+    existing_item = await item_in_order_repository.is_in_order(item.item_id, item.order_id)
+    if existing_item:
+        new_amount = existing_item.amount_in_order + item.amount_in_order
+        await update_item_amount_in_order(existing_item, new_amount)
+        return existing_item.id
     return await item_in_order_repository.add_item_to_order(item)
 
 
 ## Updates the amount of an item in order
 ## Returns the number of rows updated
-async def update_item_amount_in_order(item_in_order_id: int, new_amount_in_order: int) -> int:
-    if not await validate_item_in_order_exists(item_in_order_id):
+async def update_item_amount_in_order(item_in_order: ItemInOrder, new_amount_in_order: int):
+    if not await is_in_order(item_in_order.item_id, item_in_order.order_id):
         raise ex.item_in_order_not_found_exception()
-    return await item_in_order_repository.update_item_amount_in_order(item_in_order_id, new_amount_in_order)
+    await item_in_order_repository.update_item_amount_in_order(item_in_order.id, new_amount_in_order)
 
 
 ## Deletes an item from an order by its id
