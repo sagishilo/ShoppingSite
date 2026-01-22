@@ -69,4 +69,8 @@ class CustomExceptions:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Unable to add items to a closed order"
         )
-
+    def not_in_stock(self, in_stock):
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Unable to add this amount - {in_stock} left in stock"
+        )

@@ -65,6 +65,18 @@ async def update_item(item_id: int, updated_item: ItemRequest):
     return await item_repository.update_item(item_id, updated_item)
 
 
+
+async def update_amount(item_id: int, amount_bought: int):
+    existing_item = await item_repository.get_by_id(item_id)
+    if not existing_item:
+        raise ex.item_not_found_exception()
+    if existing_item.amount_in_stock-amount_bought<0:
+        raise ex.not_in_stock(existing_item.amount_in_stock)
+    return await item_repository.update_amount(item_id,existing_item.amount_in_stock-amount_bought)
+
+
+
+
 ## Checks if the wanted item exists
 ## Deletes the item
 async def delete_item(item_id: int) -> Optional[str]:

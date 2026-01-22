@@ -83,6 +83,26 @@ async def update_item(id: int, updated_item: ItemRequest) -> int:
     return result
 
 
+## Updates an existing item's amount
+async def update_amount(id: int, updated_amount: int) -> int:
+    query = f"""
+    UPDATE {TABLE_NAME}
+    SET
+        amount_in_stock = :amount_in_stock
+        WHERE id = :id
+    """
+    values = {
+        "amount_in_stock":updated_amount,
+        "id": id,
+    }
+
+    async with database.transaction():
+        result = await database.execute(query, values)
+    return result
+
+
+
+
 ##Deletes a specific item
 async def delete_item(item_id: int):
     query = f"DELETE FROM {TABLE_NAME} WHERE id= :id"

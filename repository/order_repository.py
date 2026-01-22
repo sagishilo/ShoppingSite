@@ -63,7 +63,8 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
         order_item_instance = ItemInOrderResponse(
             item=item_instance,
             amount_in_order=row["amount_in_order"],
-            total_price=float(row["price"]) * row["amount_in_order"]
+            total_price=float(row["price"]) * row["amount_in_order"],
+            order_id= order_id
         )
         order_items.append(order_item_instance)
         total_price += order_item_instance.total_price
