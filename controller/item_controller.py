@@ -78,3 +78,12 @@ async def delete_item(id: int):
         return deleted_id
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/add/col")
+async def add_column():
+    try:
+        await item_service.add_col()
+        return {"detail": "Column added successfully"}
+    except Exception as e:
+        return {"detail": str(e)}

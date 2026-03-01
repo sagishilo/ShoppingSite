@@ -20,14 +20,21 @@ async def get_by_id(id: int) ->Optional[Item]:
         return None
 
 
+## Returns an items by accurate name
+async def get_by_name(item_name: str) -> Optional[Item]:
+    query = f"SELECT * FROM {TABLE_NAME} WHERE item_name = :item_name"
+    row = await database.fetch_one(query, values={"item_name": item_name})
+    if row:
+        return Item(**row)
+    return None
+
 ## Returns an items by partial name
-async def get_by_name(item_name: str) -> list[Item]:
+async def search_by_name(item_name: str) -> list[Item]:
     query = f"""
     SELECT *
     FROM {TABLE_NAME}
     WHERE item_name LIKE :item_name;
     """
-
     search_value = f"%{item_name}%"
 
     results = await database.fetch_all(query, values={"item_name": search_value})
@@ -48,13 +55,14 @@ async def get_all() ->List[Item]:
 ## Creates a new item
 async def create_item(new_item: ItemRequest) -> Optional[int]:
     query = f"""
-    INSERT INTO {TABLE_NAME} (item_name, price, amount_in_stock)
-    VALUES (:item_name, :price, :amount_in_stock)
+    INSERT INTO {TABLE_NAME} (item_name, price, amount_in_stock,image_url)
+    VALUES (:item_name, :price, :amount_in_stock, :image_url)
     """
     values = {
         "item_name": new_item.item_name,
         "price": new_item.price,
-        "amount_in_stock": new_item.amount_in_stock
+        "amount_in_stock": new_item.amount_in_stock,
+        "image_url": new_item.image_url
     }
     await database.execute(query, values)
     row = await database.fetch_one("SELECT LAST_INSERT_ID() AS id")
@@ -68,13 +76,15 @@ async def update_item(id: int, updated_item: ItemRequest) -> int:
     UPDATE {TABLE_NAME}
     SET item_name = :item_name,
         price = :price,
-        amount_in_stock = :amount_in_stock
+        amount_in_stock = :amount_in_stock,
+        image_url= :image_url
     WHERE id = :id
     """
     values = {
         "item_name": updated_item.item_name,
         "price": updated_item.price,
         "amount_in_stock": updated_item.amount_in_stock,
+        "image_url": updated_item.image_url,
         "id": id,
     }
 
@@ -109,3 +119,10 @@ async def delete_item(item_id: int):
     values ={"id":item_id }
     await database.execute(query, values)
     return item_id
+
+
+
+async def add_col():
+    query = "ALTER TABLE item ADD COLUMN image_url VARCHAR(255);"
+    await database.execute(query)
+

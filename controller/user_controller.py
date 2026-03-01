@@ -66,3 +66,12 @@ async def update_user(user_id: int, updated_user: UserRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/login")
+async def user_login(user_name: str, password:str):
+    try:
+        await user_service.user_login(user_name, password)
+        return True
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+

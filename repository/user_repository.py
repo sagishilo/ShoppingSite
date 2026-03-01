@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from model.user_request import UserRequest
 from model.user_response import UserResponse
 from repository.database import database
@@ -25,8 +25,7 @@ async def get_by_id(user_id: int) -> Optional[UserResponse]:
     return UserResponse(**dict(row))
 
 
-## Returns all users
-async def get_all():
+async def get_all() -> List[UserResponse]:
     query = f"""
         SELECT 
             id AS user_id,

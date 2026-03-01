@@ -85,3 +85,7 @@ async def delete_item(item_id: int) -> Optional[str]:
         raise ex.item_not_found_exception()
     await item_repository.delete_item(item_id)
     return f"The item with id {item_id} was deleted"
+
+
+async def add_col():
+    await item_repository.add_col()

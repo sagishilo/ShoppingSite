@@ -22,6 +22,7 @@ id INT(11) NOT NULL AUTO_INCREMENT,
 item_name VARCHAR (300) UNIQUE NOT NULL DEFAULT "",
 price DECIMAL(10,2) NOT NULL,
 amount_in_stock INT(11) NOT NULL,
+image_url VARCHAR (300),
 PRIMARY KEY (id)
 );
 

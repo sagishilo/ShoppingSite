@@ -74,3 +74,8 @@ class CustomExceptions:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Unable to add this amount - {in_stock} left in stock"
         )
+    def token_exception(self):
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="The token provided is invalid"
+        )

@@ -89,9 +89,16 @@ async def delete_user(user_id: int) -> Optional[str]:
     existing_user = await user_repository.get_by_id(user_id)
     if not existing_user:
         raise ex.user_not_found_exception()
-    temp_order_id=await order_service.get_temp_order_id_by_user(user_id)
+    temp_order=await order_service.get_temp_order_by_user(user_id)
+    temp_order_id=temp_order.id
     if temp_order_id is not None:
         await order_service.delete_order(temp_order_id)
     await user_repository.delete_user(user_id)
     return f"The user with id {user_id} was deleted"
 
+async def user_login(user_name: str, password:str)-> bool:
+    users = await user_repository.get_all()
+    for u in users:
+        if user_name == u.user_name and password == u.password:
+            return True
+    raise ex.user_not_found_exception()
