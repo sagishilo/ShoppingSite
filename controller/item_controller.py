@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from model.item import Item
 from model.item_request import ItemRequest
-from repository import item_repository
+from model.item_response import ItemResponse
 from service import item_service
 
 router = APIRouter(prefix="/item", tags=["item"])
@@ -10,8 +10,8 @@ router = APIRouter(prefix="/item", tags=["item"])
 
 ## Returns an item by id
 ## gets -> int
-## returns -> Item
-@router.get("/{id}", response_model=Item)
+## returns -> ItemResponse
+@router.get("/{id}", response_model=ItemResponse)
 async def get_item_by_id(id: int):
     try:
         item = await item_service.get_item_by_id(id)
@@ -22,8 +22,8 @@ async def get_item_by_id(id: int):
 
 ## Returns an item by name
 ## gets -> str
-## returns -> Item
-@router.get("/item_name/{item_name}", response_model=List[Item])
+## returns -> ItemResponse
+@router.get("/item_name/{item_name}", response_model=List[ItemResponse])
 async def get_item_by_name(item_name: str):
     try:
         items = await item_service.get_items_by_name(item_name)
@@ -35,8 +35,8 @@ async def get_item_by_name(item_name: str):
 
 
 ## Returns all items
-## returns -> List[Item]
-@router.get("/", response_model=List[Item])
+## returns -> List[ItemResponse]
+@router.get("/", response_model=List[ItemResponse])
 async def get_items():
     try:
         return await item_service.get_all()
@@ -78,12 +78,3 @@ async def delete_item(id: int):
         return deleted_id
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.put("/add/col")
-async def add_column():
-    try:
-        await item_service.add_col()
-        return {"detail": "Column added successfully"}
-    except Exception as e:
-        return {"detail": str(e)}

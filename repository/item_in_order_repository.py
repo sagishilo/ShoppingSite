@@ -53,25 +53,43 @@ async def is_in_order(item_id: int, order_id: int):
         return None
 
 
-
 async def get_all_by_order_id(order_id: int):
     query = f"""
     SELECT 
-        item_in_order.id AS item_in_order_id,
-        item.item_name AS item_name,
-        item.price AS item_price,
-        item.amount_in_stock AS item_amount_in_stock,
         item.id AS id,
+        item.item_name AS item_name,
+        item.price AS price,
+        item.image_url AS image_url,
         item_in_order.amount_in_order AS amount_in_order,
-        (item.price * item_in_order.amount_in_order) AS total_price_in_order
+        item_in_order.order_id AS order_id,
+        (item.price * item_in_order.amount_in_order) AS total_price
     FROM {TABLE_NAME}
     JOIN item ON item_in_order.item_id = item.id
     WHERE item_in_order.order_id = :order_id;
     """
 
     results = await database.fetch_all(query, {"order_id": order_id})
-    iio = [ItemInOrderResponse(**dict(row)) for row in results]
-    return iio
+
+    formatted_results = []
+    for row in results:
+        data = dict(row._mapping)
+
+        item_obj = ItemResponse(
+            id=int(data["id"]),
+            item_name=data["item_name"],
+            price=float(data["price"]),
+            image_url=data.get("image_url", "")
+        )
+
+        iio_obj = ItemInOrderResponse(
+            item=item_obj,
+            amount_in_order=int(data["amount_in_order"]),
+            total_price=float(data["total_price"]),
+            order_id=int(data["order_id"])
+        )
+        formatted_results.append(iio_obj)
+
+    return formatted_results
 
 
 async def add_item_to_order(item: ItemInOrder) -> Optional[int]:

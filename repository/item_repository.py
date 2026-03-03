@@ -1,35 +1,38 @@
 from typing import Optional, List
-
-from model.item import Item
 from model.item_request import ItemRequest
+from model.item_response import ItemResponse
 from repository.database import database
 
 TABLE_NAME = "item"
 
 ## Returns an item by id
-async def get_by_id(id: int) ->Optional[Item]:
+async def get_by_id(item_id: int) ->Optional[ItemResponse]:
     query = f"""
     SELECT *
     FROM {TABLE_NAME}
     WHERE id = :id;
     """
-    result = await database.fetch_one(query, values={"id": id})
+    result = await database.fetch_one(query, values={"id": item_id})
     if result:
-        return Item(**result)
+        return ItemResponse(
+            id=result["id"],
+            item_name=result["item_name"],
+            price=result["price"],
+            image_url=result["image_url"])
     else:
         return None
 
 
 ## Returns an items by accurate name
-async def get_by_name(item_name: str) -> Optional[Item]:
+async def get_by_name(item_name: str) -> Optional[ItemResponse]:
     query = f"SELECT * FROM {TABLE_NAME} WHERE item_name = :item_name"
     row = await database.fetch_one(query, values={"item_name": item_name})
     if row:
-        return Item(**row)
+        return ItemResponse(**row)
     return None
 
 ## Returns an items by partial name
-async def search_by_name(item_name: str) -> list[Item]:
+async def search_by_name(item_name: str) -> list[ItemResponse]:
     query = f"""
     SELECT *
     FROM {TABLE_NAME}
@@ -38,17 +41,21 @@ async def search_by_name(item_name: str) -> list[Item]:
     search_value = f"%{item_name}%"
 
     results = await database.fetch_all(query, values={"item_name": search_value})
-    return [Item(**row) for row in results]
+    return [ItemResponse(**row) for row in results]
 
 
 ## Returns all items
-async def get_all() ->List[Item]:
+async def get_all() ->List[ItemResponse]:
     query = f"""
     SELECT *
     FROM {TABLE_NAME}
     """
     result = await database.fetch_all(query)
-    items = [Item(**dict(row)) for row in result]
+    items = [ItemResponse(
+        id=row["id"],
+        item_name=row["item_name"],
+        price=row["price"],
+        image_url=row["image_url"]) for row in result]
     return items
 
 
@@ -119,10 +126,4 @@ async def delete_item(item_id: int):
     values ={"id":item_id }
     await database.execute(query, values)
     return item_id
-
-
-
-async def add_col():
-    query = "ALTER TABLE item ADD COLUMN image_url VARCHAR(255);"
-    await database.execute(query)
 

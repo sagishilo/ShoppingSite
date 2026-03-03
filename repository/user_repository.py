@@ -1,7 +1,10 @@
 from typing import Optional, List
+
+from model.login_request import LoginRequest
 from model.user_request import UserRequest
 from model.user_response import UserResponse
 from repository.database import database
+from passlib.hash import bcrypt
 
 TABLE_NAME = "users"
 
@@ -34,7 +37,7 @@ async def get_all() -> List[UserResponse]:
             email,
             phone,
             address,
-            user_name
+            user_name,
         FROM {TABLE_NAME}
     """
     result = await database.fetch_all(query)
@@ -103,3 +106,26 @@ async def get_by_user_name(user_name: str) -> Optional[UserResponse]:
     if row is None:
         return None
     return UserResponse(**dict(row))
+
+
+async def user_login(login_request: LoginRequest) -> Optional[int]:
+    query = f"""
+        SELECT id, hashed_password
+        FROM {TABLE_NAME}
+        WHERE user_name = :user_name
+    """
+    row = await database.fetch_one(query, values={"user_name": login_request.user_name})
+
+    if row is None:
+        return None
+
+        # הדרך הכי בטוחה בגרסאות החדשות:
+    row_dict = dict(row._mapping)
+
+    hashed = row_dict.get("hashed_password")
+    user_id = row_dict.get("id")
+
+    if hashed and bcrypt.verify(login_request.password, hashed):
+        return user_id
+
+    return None

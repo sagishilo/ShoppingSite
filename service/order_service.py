@@ -71,7 +71,7 @@ async def create_order(new_order: OrderRequest) -> int:
 
 ## Updates an existing order
 ## Checks if order exists, user exists, and order status is valid
-async def update_order(order_id: int, updated_order: Order) -> int:
+async def update_order(order_id: int, updated_order: OrderRequest) -> int:
     if not await validate_order_exists(order_id):
         raise ex.order_not_found_exception()
     if not await validate_user_exists(updated_order.buyer_id):
@@ -102,3 +102,11 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
         return temp_order
     else:
         return None
+
+## Updates an existing temp order as close
+## Checks if order exists
+async def close_order(order_id: int):
+    if await validate_order_exists(order_id):
+        await order_repository.close_order(order_id)
+    else:
+        raise ex.order_not_found_exception()

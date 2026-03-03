@@ -1,8 +1,8 @@
-from typing import List, Optional
+from typing import List, Optional, Any, Coroutine
 
 from model.exceptions import CustomExceptions
-from model.item import Item
 from model.item_request import ItemRequest
+from model.item_response import ItemResponse
 from repository import item_repository
 ex=CustomExceptions()
 
@@ -18,7 +18,7 @@ async def validate_unique_item_name(item_name: str) -> bool:
 
 ##Checks if the wanted item name exists
 ## If it does - Return item by name
-async def get_items_by_name(item_name: str) -> List[Item]:
+async def get_items_by_name(item_name: str) -> ItemResponse:
     item_list= await item_repository.get_by_name(item_name)
     if not item_list:
         raise ex.item_not_found_exception()
@@ -27,7 +27,7 @@ async def get_items_by_name(item_name: str) -> List[Item]:
 
 ##Checks if the wanted item id exists
 ## If it does - Return item by id
-async def get_item_by_id(item_id: int) -> Item:
+async def get_item_by_id(item_id: int) -> ItemResponse:
     item=  await item_repository.get_by_id(item_id)
     if not item:
         raise ex.item_not_found_exception()
@@ -36,7 +36,7 @@ async def get_item_by_id(item_id: int) -> Item:
 
 
 ## Returns all items
-async def get_all() -> List[Item]:
+async def get_all() -> List[ItemResponse]:
     items_list= await item_repository.get_all()
     return items_list
 
@@ -85,7 +85,3 @@ async def delete_item(item_id: int) -> Optional[str]:
         raise ex.item_not_found_exception()
     await item_repository.delete_item(item_id)
     return f"The item with id {item_id} was deleted"
-
-
-async def add_col():
-    await item_repository.add_col()

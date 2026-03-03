@@ -38,16 +38,16 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
         return None
 
     query_items = """
-        SELECT 
-            item.id,
-            item.item_name,
-            item.price,
-            item.amount_in_stock,
-            item_in_order.amount_in_order
-        FROM item_in_order
-        JOIN item ON item_in_order.item_id = item.id
-        WHERE item_in_order.order_id = :order_id;
-    """
+            SELECT 
+                item.id,          
+                item.item_name,
+                item.price,
+                item.image_url,
+                item_in_order.amount_in_order
+            FROM item_in_order
+            JOIN item ON item_in_order.item_id = item.id
+            WHERE item_in_order.order_id = :order_id;
+        """
     item_rows = await database.fetch_all(query_items, values={"order_id": order_id})
 
     order_items = []
@@ -56,18 +56,23 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
 
     for row in item_rows:
         item_instance = ItemResponse(
+            id=row["id"],
             item_name=row["item_name"],
             price=row["price"],
+            image_url=row["image_url"] or ""
         )
+
+        item_total = float(row["price"]) * row["amount_in_order"]
 
         order_item_instance = ItemInOrderResponse(
             item=item_instance,
             amount_in_order=row["amount_in_order"],
-            total_price=float(row["price"]) * row["amount_in_order"],
-            order_id= order_id
+            total_price=item_total,
+            order_id=order_id
         )
+
         order_items.append(order_item_instance)
-        total_price += order_item_instance.total_price
+        total_price += item_total
         total_amount += row["amount_in_order"]
 
     customer_instance = UserResponse(
@@ -380,3 +385,14 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
         order_items=order_items,
         item_amount=total_amount
     )
+
+
+## close a temp order
+async def close_order(order_id: int):
+    query = f"""
+        UPDATE {TABLE_NAME}
+        SET order_status = :status
+        WHERE id = :order_id
+    """
+    values = {"status": "close", "order_id": order_id}
+    await database.execute(query, values)

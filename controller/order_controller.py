@@ -90,3 +90,13 @@ async def get_temp_order_by_buyer(buyer_id: int):
         return order
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+
+@router.put("/close/{order_id}", response_model=bool)
+async def close_order(order_id: int):
+    try:
+        await order_service.close_order(order_id)
+        return True
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

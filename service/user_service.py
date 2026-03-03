@@ -1,5 +1,6 @@
 from typing import Optional, List
 from model.exceptions import CustomExceptions
+from model.login_request import LoginRequest
 from model.user_request import UserRequest
 from model.user_response import UserResponse
 from repository import user_repository
@@ -96,9 +97,8 @@ async def delete_user(user_id: int) -> Optional[str]:
     await user_repository.delete_user(user_id)
     return f"The user with id {user_id} was deleted"
 
-async def user_login(user_name: str, password:str)-> bool:
-    users = await user_repository.get_all()
-    for u in users:
-        if user_name == u.user_name and password == u.password:
-            return True
+async def user_login(login_request: LoginRequest) -> Optional[UserResponse]:
+    user_id = await user_repository.user_login(login_request)
+    if user_id:
+        return await user_repository.get_by_id(user_id)
     raise ex.user_not_found_exception()
