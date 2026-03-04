@@ -1,9 +1,12 @@
 from typing import List, Optional, Any, Coroutine
 
 from model.exceptions import CustomExceptions
+from model.item import Item
 from model.item_request import ItemRequest
 from model.item_response import ItemResponse
 from repository import item_repository
+from service import favorite_item_service, item_in_order_service
+
 ex=CustomExceptions()
 
 
@@ -33,6 +36,21 @@ async def get_item_by_id(item_id: int) -> ItemResponse:
         raise ex.item_not_found_exception()
     return item
 
+
+async def get_full_item(item_id: int) -> Item:
+    item=  await item_repository.get_full_item(item_id)
+    if not item:
+        raise ex.item_not_found_exception()
+    return item
+
+
+##Checks if the wanted item id exists
+## If it does - Return item amount in stock
+async def get_stock(item_id: int) -> Optional[int]:
+    stock=  await item_repository.get_stock(item_id)
+    if not stock:
+        raise ex.item_not_found_exception()
+    return stock
 
 
 ## Returns all items
@@ -67,7 +85,7 @@ async def update_item(item_id: int, updated_item: ItemRequest):
 
 
 async def update_amount(item_id: int, amount_bought: int):
-    existing_item = await item_repository.get_by_id(item_id)
+    existing_item = await item_repository.get_full_item(item_id)
     if not existing_item:
         raise ex.item_not_found_exception()
     if existing_item.amount_in_stock-amount_bought<0:
@@ -84,4 +102,5 @@ async def delete_item(item_id: int) -> Optional[str]:
     if not existing_item:
         raise ex.item_not_found_exception()
     await item_repository.delete_item(item_id)
+    await favorite_item_service.delete_item(item_id)
     return f"The item with id {item_id} was deleted"

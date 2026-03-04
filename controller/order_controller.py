@@ -1,12 +1,21 @@
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
-from model.order import Order
 from model.order_request import OrderRequest
 from model.order_response import OrderResponse
-from repository import order_repository
+from model.order_summary import OrderSummary
 from service import order_service
 
 router = APIRouter(prefix="/order", tags=["order"])
+
+
+@router.get("/user/closed/{buyer_id}", response_model=List[OrderSummary])
+async def get_closed_orders_summary_by_user(buyer_id: int):
+    try:
+        closed_orders = await order_service.get_closed_orders_summary_by_user(buyer_id)
+        return closed_orders
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 
 ## Returns an order by id
@@ -59,7 +68,7 @@ async def create_order(order: OrderRequest):
 ## gets -> JSON of Order
 ## returns -> str message
 @router.put("/{order_id}", response_model=str)
-async def update_order(order_id: int, updated_order: Order):
+async def update_order(order_id: int, updated_order: OrderRequest):
     try:
         await order_service.update_order(order_id, updated_order)
         return "Update succeeded"
@@ -90,6 +99,7 @@ async def get_temp_order_by_buyer(buyer_id: int):
         return order
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 
 

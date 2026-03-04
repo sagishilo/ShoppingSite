@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from model.item_in_order import ItemInOrder
+from model.item_in_order_response import ItemInOrderResponse
 from service import item_in_order_service
 
 router = APIRouter(prefix="/item-in-order", tags=["item_in_order"])
@@ -9,7 +10,7 @@ router = APIRouter(prefix="/item-in-order", tags=["item_in_order"])
 ## Returns item_in_order by id
 ## gets -> int
 ## returns -> dict
-@router.get("/{item_in_order_id}")
+@router.get("/{item_in_order_id}", response_model=ItemInOrderResponse)
 async def get_item_in_order(item_in_order_id: int):
     try:
         result = await item_in_order_service.get_item_in_order_by_id(item_in_order_id)

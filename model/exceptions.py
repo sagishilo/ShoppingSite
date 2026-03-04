@@ -33,6 +33,17 @@ class CustomExceptions:
             detail="The item was not found"
         )
 
+    def item_not_fav_exception(self):
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="The item is not a favorite"
+        )
+
+    def item_fav_already_exception(self):
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="The item is already a favorite"
+        )
     def itemname_taken_exception(self):
         return HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

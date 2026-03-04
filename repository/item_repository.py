@@ -1,4 +1,6 @@
 from typing import Optional, List
+
+from model.item import Item
 from model.item_request import ItemRequest
 from model.item_response import ItemResponse
 from repository.database import database
@@ -19,6 +21,32 @@ async def get_by_id(item_id: int) ->Optional[ItemResponse]:
             item_name=result["item_name"],
             price=result["price"],
             image_url=result["image_url"])
+    else:
+        return None
+
+
+async def get_full_item(item_id: int) ->Optional[Item]:
+    query = f"""
+    SELECT *
+    FROM {TABLE_NAME}
+    WHERE id = :id;
+    """
+    result = await database.fetch_one(query, values={"id": item_id})
+    if result:
+        return Item(**result)
+    else:
+        return None
+
+
+async def get_stock(item_id: int) ->Optional[int]:
+    query = f"""
+    SELECT amount_in_stock
+    FROM {TABLE_NAME}
+    WHERE id = :id;
+    """
+    result = await database.fetch_one(query, values={"id": item_id})
+    if result:
+        return result["amount_in_stock"]
     else:
         return None
 

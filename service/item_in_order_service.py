@@ -36,16 +36,22 @@ async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
     order = await order_service.get_order_by_id(item.order_id)
     if order.order_status == "close":
         raise ex.closed_order()
-    item_info=await item_service.get_item_by_id(item.item_id)
-    if item.amount_in_order>item_info.amount_in_stock:
+
+    item_info = await item_service.get_full_item(item.item_id)
+    if item.amount_in_order > item_info.amount_in_stock:
         raise ex.not_in_stock(item_info.amount_in_stock)
+
     existing_item = await item_in_order_repository.is_in_order(item.item_id, item.order_id)
+
     if existing_item:
         new_amount = existing_item.amount_in_order + item.amount_in_order
-        await item_service.update_amount(item_info.id,item.amount_in_order)
-        await update_item_amount_in_order(existing_item, new_amount)
-        return existing_item.id
-    await item_service.update_amount(item_info.id, item.amount_in_order)
+        await item_service.update_amount(item.item_id, item.amount_in_order)
+
+        iio_id = await item_in_order_repository.get_id_by_item_and_order(item.item_id, item.order_id)
+        await item_in_order_repository.update_item_amount_in_order(iio_id, new_amount)
+        return iio_id
+
+    await item_service.update_amount(item.item_id, item.amount_in_order)
     return await item_in_order_repository.add_item_to_order(item)
 
 

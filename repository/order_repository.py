@@ -1,12 +1,9 @@
 from typing import List, Optional
-
-from model.item import Item
 from model.item_in_order_response import ItemInOrderResponse
 from model.item_response import ItemResponse
-from model.order import Order
 from model.order_request import OrderRequest
 from model.order_response import OrderResponse
-from model.order_status import OrderStatus
+from model.order_summary import OrderSummary
 from model.user_response import UserResponse
 from repository.database import database
 
@@ -180,7 +177,7 @@ async def get_all() -> List[OrderResponse]:
 
 ## Returns all orders by user id
 async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
-    query_orders = """
+    query_orders = f"""
                 SELECT 
                     orders.id AS order_id,
                     orders.buyer_id,
@@ -194,7 +191,7 @@ async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
                     users.phone,
                     users.address AS user_address,
                     users.user_name
-                FROM orders
+                FROM {TABLE_NAME}
                 JOIN users ON orders.buyer_id = users.id
                 WHERE buyer_id= :buyer_id
                 """
@@ -396,3 +393,26 @@ async def close_order(order_id: int):
     """
     values = {"status": "close", "order_id": order_id}
     await database.execute(query, values)
+
+async def get_closed_orders_summary_by_user(user_id: int) -> List[OrderSummary]:
+    query = f"""
+    SELECT 
+        o.id AS order_id,
+        o.order_date,
+        SUM(iio.amount_in_order) AS total_items,
+        SUM(iio.amount_in_order * i.price) AS total_price
+    FROM {TABLE_NAME} o
+    JOIN item_in_order iio ON iio.order_id = o.id
+    JOIN item i ON i.id = iio.item_id
+    WHERE o.buyer_id = :user_id AND o.order_status = 'closed'
+    GROUP BY o.id, o.order_date
+    ORDER BY o.order_date DESC;
+    """
+    orders = await database.fetch_all(query, values={"user_id": user_id})
+
+    return [OrderSummary(
+        order_id=o["order_id"],
+        order_date=o["order_date"],
+        total_items=int(o["total_items"]),
+        total_price=float(o["total_price"])
+    ) for o in orders]

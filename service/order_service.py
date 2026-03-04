@@ -5,6 +5,7 @@ from model.order import Order
 from model.order_request import OrderRequest
 from model.order_response import OrderResponse
 from model.order_status import OrderStatus
+from model.order_summary import OrderSummary
 from repository import order_repository, user_repository
 from service import item_in_order_service
 
@@ -35,6 +36,13 @@ async def validate_order_status(status: str) -> bool:
 ## Returns all orders
 async def get_all() -> List[OrderResponse]:
     orders_list= await order_repository.get_all()
+    return orders_list
+
+## Returns all closed orders for user
+async def get_closed_orders_summary_by_user(user_id: int) -> List[OrderSummary]:
+    if not await validate_user_exists(user_id):
+        raise ex.user_not_found_exception()
+    orders_list= await order_repository.get_closed_orders_summary_by_user(user_id)
     return orders_list
 
 ## Returns an order by id
