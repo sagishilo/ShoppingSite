@@ -14,6 +14,7 @@ async def get_all_by_user_id(user_id: int) -> List[ItemResponse]:
         i.id AS item_id,
         i.item_name,
         i.price,
+        i.amount_in_stock,
         i.image_url
     FROM item i
     JOIN {TABLE_NAME} f ON i.id = f.item_id
@@ -26,6 +27,7 @@ async def get_all_by_user_id(user_id: int) -> List[ItemResponse]:
             id=row["item_id"],
             item_name=row["item_name"],
             price=float(row["price"]),
+            amount_in_stock=(row["amount_in_stock"]),
             image_url=row["image_url"] or ""
         )
         formatted_results.append(item_obj)

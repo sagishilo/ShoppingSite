@@ -1,6 +1,8 @@
 import datetime
+import re
 import streamlit as st
 import requests
+import pandas as pd
 
 # ---------- CONFIG ----------
 st.set_page_config(page_title="ShoppingSite", page_icon="🛒", layout="wide")
@@ -48,10 +50,12 @@ def show_user_dashboard():
         return
 
     user_id = st.session_state["user"]["user_id"]
-    st.title("👤 אזור אישי")
+    colss = st.columns([1, 1, 2, 1, 1])
+    with colss[2]:
+        st.title("אזור אישי 👤",  )
 
     st.divider()
-    st.subheader("📦 הזמנות סגורות")
+    st.subheader(" הזמנות סגורות 📦")
 
     # ---- הזמנות סגורות ----
     try:
@@ -62,17 +66,27 @@ def show_user_dashboard():
                 st.info("לא נמצאו הזמנות סגורות")
             else:
                 for o in orders:
-                    order_date = datetime.datetime.fromisoformat(o["order_date"]).strftime("%d/%m/%Y %H:%M")
-                    st.write(f"**הזמנה #{o['order_id']}**")
-                    st.caption(f"תאריך: {order_date} | סה\"כ מוצרים: {o['total_items']} | סכום כולל: ₪{o['total_price']}")
+                    order_date = datetime.datetime.fromisoformat(o["order_date"]).strftime("%d/%m/%Y")
+                    st.write(f"**הזמנה #{o.get('order_id', 'N/A')}**")
+                    st.caption(f"תאריך: {order_date} | סה\"כ מוצרים: {o.get('total_items', 0)} | סכום כולל: ₪{o.get('total_price', 0)}")
                     st.divider()
         else:
-            st.error(f"שגיאה בטעינת ההזמנות: {res_orders.text}")
+            st.toast(f"שגיאה בטעינת ההזמנות: {res_orders.text}")
     except Exception as e:
-        st.error(f"שגיאה בתקשורת: {e}")
+        st.toast(f"שגיאה בתקשורת: {e}")
 
-    st.divider()
-    st.subheader("❤️ המועדפים שלי")
+    st.subheader("המועדפים שלי❤️")
+
+    # ---- callback למועדפים ----
+    def toggle_fav_callback(item_id, user_id):
+        favorites = st.session_state.get("favorites", [])
+        is_fav = item_id in favorites
+        success = toggle_favorite(user_id, item_id, is_fav)
+        if success:
+            if is_fav:
+                st.session_state["favorites"] = [f for f in favorites if f != item_id]
+            else:
+                st.session_state["favorites"] = favorites + [item_id]
 
     # ---- מוצרים מועדפים ----
     try:
@@ -82,20 +96,45 @@ def show_user_dashboard():
             if not fav_items:
                 st.info("לא קיימים מוצרים מועדפים")
             else:
-                num_cols = 4
-                for i in range(0, len(fav_items), num_cols):
-                    cols = st.columns(num_cols, gap="medium")
-                    for j, item in enumerate(fav_items[i:i+num_cols]):
-                        with cols[j]:
-                            img_url = item.get("image_url") or "https://katzr.net/a0cf43"
-                            st.image(img_url, use_container_width=True)
-                            st.markdown(f"**{item['item_name']}**")
-                            st.markdown(f"💰 {item['price']} ₪")
-        else:
-            st.error(f"שגיאה בטעינת המוצרים המועדפים: {res_fav.text}")
-    except Exception as e:
-        st.error(f"שגיאה בתקשורת: {e}")
+                # הכנת DataFrame
+                data = []
+                for item in fav_items:
+                    p_id = int(item.get("id", 0))
+                    is_fav = p_id in st.session_state.get("favorites", [])
+                    data.append({
+                        "שם מוצר": item.get("item_name", "Unknown"),
+                        "מחיר (₪)": item.get("price", 0),
+                        "מלאי": item.get("amount_in_stock", 0),
+                        "מועדף": is_fav,
+                        "תמונה": item.get("image_url") or "https://katzr.net/a0cf43",
+                        "item_id": p_id
+                    })
+                df = pd.DataFrame(data)
 
+                # הצגת DataFrame
+                for index, row in df.iterrows():
+                    cols = st.columns([2,1,1,1,1])
+                    with cols[0]:
+                        st.image(row["תמונה"], width=60)
+                        st.markdown(f"**{row['שם מוצר']}**")
+                    with cols[1]:
+                        st.markdown(f"💰 {row['מחיר (₪)']}")
+                    with cols[2]:
+                        st.markdown(f"{row['מלאי']}")
+                    with cols[3]:
+                        # Checkbox למעקב מועדפים
+                        st.checkbox(
+                            "",
+                            value=row["מועדף"],
+                            key=f"fav_chk_{row['item_id']}",
+                            on_change=toggle_fav_callback,
+                            args=(row['item_id'], user_id)
+                        )
+
+        else:
+            st.toast(f"שגיאה בטעינת המוצרים המועדפים: {res_fav.text}")
+    except Exception as e:
+        st.toast(f"שגיאה בתקשורת: {e}")
 
 
 def show_order_success_page():
@@ -150,6 +189,21 @@ def get_user_favorites(user_id):
     return []
 
 
+def update_cart_item(iio_id, idx, new_amount):
+    if new_amount < 1:
+        return
+
+    response = requests.put(f"{API_URL}/item-in-order/{iio_id}", json={"amount_in_order": new_amount})
+    if response.status_code == 200:
+        st.session_state["cart"][idx]["amount_in_order"] = new_amount
+        st.rerun()
+
+def delete_cart_item(iio_id, idx):
+    response = requests.delete(f"{API_URL}/item-in-order/{iio_id}")
+    if response.status_code == 200:
+        st.session_state["cart"].pop(idx)
+        st.rerun()
+
 def toggle_favorite(user_id, item_id, is_favorite):
     # נתיב בסיסי
     base_url = f"{API_URL.strip('/')}/fav-item"
@@ -167,49 +221,178 @@ def toggle_favorite(user_id, item_id, is_favorite):
             res = requests.post(f"{base_url}/", json=payload, timeout=5)
 
         if res.status_code == 422:
-            st.error(f"שגיאת ולידציה (422): {res.json()}")  # זה ידפיס לך בדיוק מה חסר ב-JSON
+            st.toast(f"שגיאת ולידציה (422): {res.json()}")  # זה ידפיס לך בדיוק מה חסר ב-JSON
             return False
 
         return res.status_code in (200, 201)
     except Exception as e:
-        st.error(f"שגיאה בתקשורת: {e}")
+        st.toast(f"שגיאה בתקשורת: {e}")
         return False
+
+
+
+def load_temp_cart():
+    try:
+        user_id = st.session_state["user"]["user_id"]
+        res_order = requests.get(f"{API_URL}/order/user/temp/{user_id}", timeout=5)
+        if res_order.status_code == 200 and res_order.json():
+            order = res_order.json()
+            st.session_state["temp_order_id"] = order["id"]
+            # עכשיו נטען את פרטי העגלה
+            res_items = requests.get(f"{API_URL}/item-in-order/order/{order['id']}", timeout=5)
+            if res_items.status_code == 200:
+                st.session_state["cart"] = res_items.json()
+            else:
+                st.session_state["cart"] = []
+        else:
+            st.session_state["temp_order_id"] = None
+            st.session_state["cart"] = []
+    except:
+        st.session_state["temp_order_id"] = None
+        st.session_state["cart"] = []
+
+
+def add_to_cart(product):
+    if not st.session_state.get("user"):
+        show_login_dialog()
+        return
+    order_id = st.session_state.get("temp_order_id") or new_order()
+    if not order_id:
+        return
+    payload = {
+        "order_id": int(order_id),
+        "item_id": int(product["id"]),
+        "amount_in_order": 1
+    }
+    res = requests.post(f"{API_URL}/item-in-order/", json=payload)
+    if res.status_code in (200, 201):
+        sync_cart_from_db()
+        st.toast(f"✅ {product['item_name']} נוסף לעגלה!")
+        st.rerun()
+    else:
+        st.toast(f"❌ שגיאה: {res.text}")
+
+
+
+
+def increase_cart_amount(product, in_cart, max_stock):
+    new_amount = in_cart["amount_in_order"] + 1
+
+    if new_amount > max_stock:
+        st.toast("❌ אין מספיק מלאי")
+        return
+
+    res = requests.put(
+        f"{API_URL}/item-in-order/{in_cart['id']}",
+        params={"new_amount_in_order": new_amount}
+    )
+
+    if res.status_code == 200:
+        # עדכון ישיר של session_state
+        cart = st.session_state.get("cart", [])
+        for idx, item in enumerate(cart):
+            if item["id"] == in_cart["id"]:
+                st.session_state["cart"][idx]["amount_in_order"] = new_amount
+                # עדכון מפתחות temp ו-orig
+                temp_key = f"temp_{in_cart['id']}"
+                orig_key = f"orig_{in_cart['id']}"
+                st.session_state[temp_key] = new_amount
+                st.session_state[orig_key] = new_amount
+                break
+
+        st.toast(f"✅ כמות {product['item_name']} עודכנה ל-{new_amount}")
+        st.rerun()
+    else:
+        st.toast(f"❌ שגיאה: {res.text}")
+
+
+def update_ui_cart(iio):
+    iio_id = iio.get("id")
+    new_amount = iio.get("amount_in_order", 1)
+    orig_key = f"orig_{iio_id}"
+    temp_key = f"temp_{iio_id}"
+
+    st.session_state[temp_key] = new_amount
+    st.session_state[orig_key] = new_amount
+
+
+def filter_products_advanced(products, name_query="", stock_op="", stock_val="", price_op="", price_val=""):
+    filtered = []
+
+    # המרת ערכים למספרים אם אפשר
+    try:
+        stock_val_num = int(stock_val) if stock_val else None
+    except:
+        stock_val_num = None
+
+    try:
+        price_val_num = float(price_val) if price_val else None
+    except:
+        price_val_num = None
+
+    # פיצול מילים לחיפוש בשם
+    name_words = name_query.lower().split() if name_query else []
+
+    for p in products:
+        # חיפוש בשם
+        name_ok = all(word in p["item_name"].lower() for word in name_words)
+
+        # חיפוש במלאי
+        stock_ok = True
+        if stock_op and stock_val_num is not None:
+            if stock_op == "מעל":
+                stock_ok = p.get("amount_in_stock",0) > stock_val_num
+            elif stock_op == "מתחת":
+                stock_ok = p.get("amount_in_stock",0) < stock_val_num
+            elif stock_op == "כמות מדוייקת":
+                stock_ok = p.get("amount_in_stock",0) == stock_val_num
+
+        # חיפוש במחיר
+        price_ok = True
+        if price_op and price_val_num is not None:
+            if price_op == "מעל":
+                price_ok = p.get("price",0) > price_val_num
+            elif price_op == "מתחת":
+                price_ok = p.get("price",0) < price_val_num
+            elif price_op == "מחיר מדוייק":
+                price_ok = p.get("price",0) == price_val_num
+
+        if name_ok and stock_ok and price_ok:
+            filtered.append(p)
+
+    return filtered
 
 
 
 # פונקציית עזר לטעינת עגלה מהשרת (סטטוס TEMP)
 def sync_cart_from_db():
-    user = st.session_state.get("user")
-    if user and "user_id" in user:
-        user_id = user["user_id"]
-        try:
-            res_order = requests.get(f"{API_URL}/order/user/temp/{user_id}", timeout=5)
-            if res_order.status_code == 200 and res_order.json():
-                order = res_order.json()
-                order_id = order["id"]
-                st.session_state["temp_order_id"] = order_id
 
-                res_items = requests.get(f"{API_URL}/item-in-order/order/{order_id}", timeout=5)
+    order_id = st.session_state.get("temp_order_id")
 
-                if res_items.status_code == 200:
-                    data = res_items.json()
-                    st.session_state["cart"] = data
-                else:
-                    st.session_state["cart"] = []
+    if not order_id:
+        st.session_state["cart"] = []
+        return
+    try:
+        res_items = requests.get(
+            f"{API_URL}/item-in-order/order/{order_id}",
+            timeout=5
+        )
+        if res_items.status_code == 200:
+            st.session_state["cart"] = res_items.json()
+        else:
+            st.session_state["cart"] = []
 
-                #if "favorites" not in st.session_state:
-                #    st.session_state["favorites"] = []
+    except Exception as e:
+        st.toast(f"שגיאה בסנכרון העגלה: {e}")
 
-                #if st.session_state["user"]:
-                #    st.session_state["favorites"] = get_user_favorites(st.session_state["user"]["user_id"])
 
-        except Exception as e:
-            st.error(f"שגיאה בסנכרון העגלה: {e}")
+
+
 
 def new_order():
     user = st.session_state.get("user")
     if not user or "user_id" not in user:
-        st.error("❌ אין משתמש מחובר")
+        st.toast("❌ אין משתמש מחובר")
         return
     user_id = user["user_id"]
     try:
@@ -234,23 +417,23 @@ def new_order():
 
         if res.status_code in (200, 201):
             order_id = res.json()  # אם ה־API מחזיר את ה-ID
-            st.success(f"הזמנה חדשה נוצרה! מספר הזמנה: {order_id}")
+            ##st.success(f"הזמנה חדשה נוצרה! מספר הזמנה: {order_id}")
             st.session_state["temp_order_id"] = order_id
             return order_id
         else:
-            st.error(f"❌ שגיאה {res.status_code}")
+            st.toast(f"❌ שגיאה {res.status_code}")
             with st.expander("ראה פרטים"):
                 st.write("URL:", clean_url)
                 st.write("Response:", res.text)
 
     except Exception as e:
-        st.error(f"❌ תקלה בתקשורת: {e}")
+        st.toast(f"❌ תקלה בתקשורת: {e}")
 
 
 def finalize_checkout():
     order_id = st.session_state.get("temp_order_id")
     if not order_id:
-        st.error("לא נמצאה הזמנה פעילה לסגירה.")
+        st.toast("לא נמצאה הזמנה פעילה לסגירה.")
         return
 
     try:
@@ -264,10 +447,10 @@ def finalize_checkout():
             st.session_state["page"] = "order_success"
             st.rerun()
         else:
-            st.error(f"שגיאה בסגירת ההזמנה: {res.text}")
+            st.toast(f"שגיאה בסגירת ההזמנה: {res.text}")
 
     except Exception as e:
-        st.error(f"תקלה בתקשורת: {e}")
+        st.toast(f"תקלה בתקשורת: {e}")
 
 
 # ---------- DIALOGS (POPUPS) ----------
@@ -306,39 +489,75 @@ def show_home_page():
         st.session_state["favorites"] = get_user_favorites(user_id)
         st.session_state["favorites_loaded"] = True
 
+
+
+
+
+
     # ---------- סנכרון עגלה ----------
-    if st.session_state["user"] and not st.session_state.get("cart"):
-        sync_cart_from_db()  # לא נוגע במועדפים יותר
+    if "cart_loaded" not in st.session_state and st.session_state["user"]:
+        sync_cart_from_db()
+        st.session_state["cart_loaded"] = True
 
-    # ---------- שורת חיפוש ----------
-    _, search_center, _ = st.columns([1,2,1])
+
+
+
+
+
+    # ---------- SEARCH FILTERS ----------
+    search_center, col_stock, col_stock_val,col_price, col_price_val, clr_btn = st.columns([2, 1, 1, 1, 1,0.5])
     with search_center:
-        search_query = st.text_input(
-            "חפש מוצר",
-            placeholder="🔍 מה תרצה לקנות היום?",
-            label_visibility="collapsed",
-            value=st.session_state["search_input_val"],
-            key="home_search_input"
+        # שם מוצר
+        product_name_query = st.text_input(
+            "שם מוצר",
+            placeholder="לדוגמה: 'banana apple'",
+            value=st.session_state.get("search_name_val", ""),
+            key="search_name_input"
         )
-        st.session_state["search_input_val"] = search_query
+        st.session_state["search_name_val"] = product_name_query
 
-    st.markdown("### 🔥 כל המוצרים")
+        # כמות במלאי
+        with col_stock:
+            stock_op = st.selectbox("מלאי", ["", "מתחת", "מעל", "כמות מדוייקת"], key="stock_op")
+        with col_stock_val:
+            stock_val = st.text_input("", key="stock_val")
+
+        # מחיר
+        with col_price:
+            price_op = st.selectbox("מחיר", ["", "מתחת", "מעל", "מחיר מדוייק"], key="price_op")
+        with col_price_val:
+            price_val = st.text_input("", key="price_val")
+
+
+
+    #st.markdown("### 🔥 כל המוצרים")
 
     # ---------- טעינת מוצרים ----------
     try:
         response = requests.get(f"{API_URL}/item/", timeout=5)
         all_products = response.json()
     except Exception:
-        st.error("❌ לא ניתן לטעון מוצרים מהשרת.")
+        st.toast("❌ לא ניתן לטעון מוצרים מהשרת.")
         return
 
-    # סינון לפי חיפוש
-    products = [p for p in all_products if search_query.lower() in p['item_name'].lower()] \
-        if search_query else all_products
+    products = filter_products_advanced(
+        all_products,
+        name_query=product_name_query,
+        stock_op=stock_op,
+        stock_val=stock_val,
+        price_op=price_op,
+        price_val=price_val
+    )
+
+    if st.button("נקה", use_container_width=True):
+        for key in ["search_name_val", "stock_val", "price_val", "stock_op", "price_op"]:
+            st.session_state[key] = st.session_state.get(key, "")
+        products = all_products
 
     if not products:
-        st.info(f"לא נמצאו מוצרים עבור: **{search_query}**")
-        return
+        st.toast("לא נמצאו מוצרים התואמים לחיפוש שלך")
+        products = all_products
+
 
     # ---------- גריד מוצרים ----------
     num_cols = 5
@@ -350,29 +569,41 @@ def show_home_page():
                 img_url = product.get("image_url") or "https://katzr.net/a0cf43"
                 st.image(img_url, use_container_width=True)
 
-                # שם ומחיר
+                # שם, מחיר וכמות במלאי
                 st.markdown(f"**{product['item_name']}**")
                 st.markdown(f"💰 {product['price']} ₪")
+                st.markdown(f" {product['amount_in_stock']} left in stock")
 
                 # כפתורי פעולה
                 col_btn, col_fav = st.columns([3,1])
 
                 with col_btn:
-                    if st.button("הוסף לעגלה", key=f"add_{product['id']}", use_container_width=True):
-                        if not st.session_state.get("user"):
-                            show_login_dialog()
+                    cart = st.session_state.get("cart", [])
+                    # בדיקה אם המוצר כבר בעגלה
+                    in_cart = next((iio for iio in cart if iio["item"]["id"] == product["id"]), None)
+                    max_stock = product["amount_in_stock"]
+                    if max_stock == 0:
+                        st.write("❌ אזל מהמלאי")
+                        #continue
+
+                    if in_cart:
+                        current_amount = in_cart["amount_in_order"]
+                        if current_amount >= max_stock:
+                            st.write(f"✅ {product['item_name']} כבר בעגלה - מלאי: {max_stock}")
                         else:
-                            order_id = st.session_state.get("temp_order_id") or new_order()
-                            if order_id:
-                                item_payload = {
-                                    "order_id": int(order_id),
-                                    "item_id": int(product["id"]),
-                                    "amount_in_order": 1
-                                }
-                                res = requests.post(f"{API_URL}/item-in-order/", json=item_payload)
-                                if res.status_code in (200,201):
-                                    st.toast(f"✅ {product['item_name']} נוסף לעגלה!")
-                                    sync_cart_from_db()
+                            if st.button("הוסף לעגלה", key=f"add_{product['id']}", use_container_width=True):
+                                increase_cart_amount(product, in_cart, max_stock)
+                                st.rerun()
+
+                    else:
+                        if max_stock > 0:
+                            if st.button("הוסף לעגלה", key=f"add_{product['id']}", use_container_width=True):
+                                if not st.session_state.get("user"):
+                                    show_login_dialog()
+                                else:
+                                    add_to_cart(product)
+                                    st.rerun()
+
 
                 with col_fav:
                     if st.session_state["user"]:
@@ -391,29 +622,92 @@ def show_home_page():
                                 else:
                                     st.session_state["favorites"] = favorites + [p_id]
 
-    # ---------- סרגל צד (עגלה) ----------
-    if st.session_state["user"]:
+    # ---------- עגלה Sidebar ----------
+    if st.session_state.get("user"):
+        load_temp_cart()
         with st.sidebar:
             st.header("🛒 העגלה שלי")
-            if st.session_state.get("cart"):
-                total = 0
-                for iio in st.session_state["cart"]:
-                    item = iio.get("item")
-                    if item:
-                        name = item.get("item_name")
-                        price = item.get("price")
-                        amount = iio.get("amount_in_order", 1)
+            cart = st.session_state.get("cart", [])
 
-                        st.write(f"**{name}**")
-                        st.caption(f"{amount} יחידות - ₪{price * amount}")
-                        total += (price * amount)
+            if not cart:
+                st.info("העגלה שלך ריקה")
+            else:
+                total_sum = 0
+
+                for idx, iio in enumerate(cart):
+                    iio_id = iio.get("id")
+                    item = iio.get("item", {})
+                    name = item.get("item_name", "מוצר ללא שם")
+                    price = item.get("price", 0)
+                    amount = iio.get("amount_in_order", 1)
+                    in_stock = item.get("amount_in_stock", 0)
+
+                    # מפתחות ל-session_state
+                    orig_key = f"orig_{iio_id}"
+                    temp_key = f"temp_{iio_id}"
+                    if orig_key not in st.session_state:
+                        st.session_state[orig_key] = amount
+                    if temp_key not in st.session_state:
+                        st.session_state[temp_key] = amount
+
+                    with st.container(border=True):
+                        # שם מוצר ומחיקה
+                        col_name, col_del = st.columns([4, 1])
+                        col_name.markdown(f"**{name}**")
+                        if col_del.button("🗑️", key=f"rm_{iio_id}"):
+                            # מחיקה מהDB ומ-session_state
+                            response = requests.delete(f"{API_URL}/item-in-order/{iio_id}")
+                            if response.status_code == 200:
+                                st.session_state["cart"].pop(idx)
+                                st.session_state.pop(orig_key, None)
+                                st.session_state.pop(temp_key, None)
+                                st.rerun()
+                            else:
+                                st.toast(f"❌ שגיאה במחיקת מוצר: {response.text}")
+
+                        # שליטה בכמות
+                        col_minus, col_num, col_plus = st.columns([1, 2, 1])
+                        with col_minus:
+                            if st.session_state[temp_key] > 1:
+                                if st.button("−", key=f"dec_{iio_id}"):
+                                    st.session_state[temp_key] -= 1
+                                    st.rerun()
+                        with col_num:
+                            st.markdown(
+                                f"<p style='text-align:center; font-size:1.2em;'>{st.session_state[temp_key]}</p>",
+                                unsafe_allow_html=True)
+                        with col_plus:
+                            if st.session_state[temp_key] < in_stock:
+                                if st.button("+", key=f"inc_{iio_id}"):
+                                    st.session_state[temp_key] += 1
+                                    st.rerun()
+
+                        # כפתור עדכון כמות (מופיע רק אם שונה מהמקורי)
+                        if st.session_state[temp_key] != st.session_state[orig_key]:
+                            if st.button("עדכן כמות", key=f"update_{iio_id}", use_container_width=True, type="primary"):
+                                new_amount = st.session_state[temp_key]
+                                response = requests.put(
+                                    f"{API_URL}/item-in-order/{iio_id}",
+                                    params={"new_amount_in_order": new_amount}
+                                )
+                                if response.status_code == 200:
+                                    st.session_state[orig_key] = new_amount
+                                    st.session_state["cart"][idx]["amount_in_order"] = new_amount
+                                    st.toast(f"✅ כמות של {name} עודכנה ל-{new_amount}")
+                                    st.rerun()
+                                else:
+                                    st.toast(f"❌ שגיאה בעדכון הכמות: {response.text}")
+
+                        # מחיר סופי לפריט
+                        item_total = price * st.session_state[temp_key]
+                        total_sum += item_total
+                        st.caption(f"מחיר יחידה: ₪{price} | סה\"כ: **₪{item_total}**")
 
                 st.divider()
-                st.subheader(f"סה\"כ: {total} ₪")
-                if st.button("לתשלום וסגירת הזמנה", use_container_width=True, type="primary"):
+                st.subheader(f"סה\"כ לתשלום: ₪{total_sum}")
+
+                if st.button("🚀 לתשלום וסגירת הזמנה", use_container_width=True, type="primary"):
                     finalize_checkout()
-            else:
-                st.info("העגלה שלך ריקה")
 
 def show_register_page():
     render_header()
@@ -437,9 +731,9 @@ def show_register_page():
 
     if submitted:
         if not all([first_name, last_name, user_name, email, password]):
-            st.error("❌ חסרים שדות חובה")
+            st.toast("❌ חסרים שדות חובה")
         elif password != confirm_password:
-            st.error("❌ הסיסמאות אינן תואמות")
+            st.toast("❌ הסיסמאות אינן תואמות")
         else:
             payload = {
                 "first_name": first_name, "last_name": last_name, "email": email,
@@ -455,9 +749,9 @@ def show_register_page():
                     st.session_state["page"] = "home"
                     st.rerun()
                 else:
-                    st.error(f"שגיאה: {res.text}")
+                    st.toast(f"שגיאה: {res.text}")
             except:
-                st.error("חיבור לשרת נכשל")
+                st.toast("חיבור לשרת נכשל")
 
 
 def show_login_page():
@@ -496,13 +790,13 @@ def show_login_page():
                 st.rerun()
             else:
                 # הדפסת הדיבג שתעזור לנו אם זה עדיין נכשל
-                st.error(f"❌ שגיאה {res.status_code}")
+                st.toast(f"❌ שגיאה {res.status_code}")
                 with st.expander("ראה פרטים"):
                     st.write("URL:", clean_url)
                     st.write("Response:", res.text)
 
         except Exception as e:
-            st.error(f"❌ תקלה בתקשורת: {e}")
+            st.toast(f"❌ תקלה בתקשורת: {e}")
 
 
 

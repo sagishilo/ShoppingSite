@@ -17,7 +17,6 @@ async def get_closed_orders_summary_by_user(buyer_id: int):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-
 ## Returns an order by id
 ## gets -> int
 ## returns -> OrderResponse

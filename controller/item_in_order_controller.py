@@ -51,7 +51,8 @@ async def add_item_to_order(item: ItemInOrder):
 @router.put("/{item_in_order_id}")
 async def update_item_amount(item_in_order_id: int, new_amount_in_order: int):
     try:
-        result = await item_in_order_service.update_item_amount_in_order(item_in_order_id, new_amount_in_order)
+        iio=await item_in_order_service.get_item_in_order_by_id(item_in_order_id)
+        result = await item_in_order_service.update_item_amount_in_order(iio, new_amount_in_order)
         if not result:
             raise HTTPException(status_code=404, detail="Item in order not found")
         return "Update succeeded"

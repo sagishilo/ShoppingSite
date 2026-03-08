@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 from model.item_in_order_response import ItemInOrderResponse
 from model.item_response import ItemResponse
@@ -36,11 +37,13 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
 
     query_items = """
             SELECT 
-                item.id,          
+                item.id,
                 item.item_name,
                 item.price,
+                item.amount_in_stock,
                 item.image_url,
-                item_in_order.amount_in_order
+                item_in_order.amount_in_order,
+                item_in_order.id AS iio_id
             FROM item_in_order
             JOIN item ON item_in_order.item_id = item.id
             WHERE item_in_order.order_id = :order_id;
@@ -56,12 +59,14 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
             id=row["id"],
             item_name=row["item_name"],
             price=row["price"],
+            amount_in_stock=int(row["amount_in_stock"]),
             image_url=row["image_url"] or ""
         )
 
         item_total = float(row["price"]) * row["amount_in_order"]
 
         order_item_instance = ItemInOrderResponse(
+            id=int(row["iio_id"]),
             item=item_instance,
             amount_in_order=row["amount_in_order"],
             total_price=item_total,
@@ -113,22 +118,31 @@ async def get_all() -> List[OrderResponse]:
         FROM {TABLE_NAME}
         JOIN users ON orders.buyer_id = users.id;
     """
+
     orders_rows = await database.fetch_all(query_orders)
     all_orders = []
 
     for order_row in orders_rows:
+
         query_items = """
             SELECT 
-                item.id,
+                item.id AS item_id,
                 item.item_name,
                 item.price,
                 item.amount_in_stock,
-                item_in_order.amount_in_order
+                item.image_url,
+                item_in_order.amount_in_order,
+                item_in_order.order_id,
+                item_in_order.id AS iio_id
             FROM item_in_order
             JOIN item ON item_in_order.item_id = item.id
             WHERE item_in_order.order_id = :order_id;
         """
-        item_rows = await database.fetch_all(query_items, values={"order_id": order_row["order_id"]})
+
+        item_rows = await database.fetch_all(
+            query_items,
+            values={"order_id": order_row["order_id"]}
+        )
 
         order_items = []
         total_price = 0.0
@@ -136,21 +150,28 @@ async def get_all() -> List[OrderResponse]:
 
         for row in item_rows:
             item_instance = ItemResponse(
+                id=int(row["item_id"]),
                 item_name=row["item_name"],
-                price=row["price"],
+                price=float(row["price"]),
+                amount_in_stock=int(row["amount_in_stock"]),
+                image_url=row["image_url"] or "https://katzr.net/a0cf43"
             )
 
             order_item_instance = ItemInOrderResponse(
+                id=int(row["iio_id"]),
                 item=item_instance,
-                amount_in_order=row["amount_in_order"],
-                total_price=float(row["price"]) * row["amount_in_order"]
+                amount_in_order=int(row["amount_in_order"]),
+                total_price=float(row["price"]) * int(row["amount_in_order"]),
+                order_id=int(row["order_id"])
             )
+
             order_items.append(order_item_instance)
+
             total_price += order_item_instance.total_price
-            total_amount += row["amount_in_order"]
+            total_amount += int(row["amount_in_order"])
 
         customer_instance = UserResponse(
-            user_id=order_row["user_id"],
+            user_id=int(order_row["user_id"]),
             first_name=order_row["first_name"],
             last_name=order_row["last_name"],
             email=order_row["email"],
@@ -161,7 +182,7 @@ async def get_all() -> List[OrderResponse]:
 
         all_orders.append(
             OrderResponse(
-                id=order_row["order_id"],
+                id=int(order_row["order_id"]),
                 order_status=order_row["order_status"],
                 customer=customer_instance,
                 order_date=order_row["order_date"],
@@ -178,39 +199,48 @@ async def get_all() -> List[OrderResponse]:
 ## Returns all orders by user id
 async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
     query_orders = f"""
-                SELECT 
-                    orders.id AS order_id,
-                    orders.buyer_id,
-                    orders.order_status,
-                    orders.order_date,
-                    orders.order_address,
-                    users.id AS user_id,
-                    users.first_name,
-                    users.last_name,
-                    users.email,
-                    users.phone,
-                    users.address AS user_address,
-                    users.user_name
-                FROM {TABLE_NAME}
-                JOIN users ON orders.buyer_id = users.id
-                WHERE buyer_id= :buyer_id
-                """
-    orders_rows = await database.fetch_all(query_orders,values={"buyer_id": buyer_id})
+        SELECT 
+            orders.id AS order_id,
+            orders.buyer_id,
+            orders.order_status,
+            orders.order_date,
+            orders.order_address,
+            users.id AS user_id,
+            users.first_name,
+            users.last_name,
+            users.email,
+            users.phone,
+            users.address AS user_address,
+            users.user_name
+        FROM {TABLE_NAME}
+        JOIN users ON orders.buyer_id = users.id
+        WHERE orders.buyer_id = :buyer_id
+    """
+
+    orders_rows = await database.fetch_all(query_orders, values={"buyer_id": buyer_id})
     all_orders = []
 
     for order_row in orders_rows:
+
         query_items = """
-                SELECT 
-                    item.id,
-                    item.item_name,
-                    item.price,
-                    item.amount_in_stock,
-                    item_in_order.amount_in_order
-                FROM item_in_order
-                JOIN item ON item_in_order.item_id = item.id
-                WHERE item_in_order.order_id = :order_id;
-            """
-        item_rows = await database.fetch_all(query_items, values={"order_id": order_row["order_id"]})
+            SELECT 
+                item.id AS item_id,
+                item.item_name,
+                item.price,
+                item.amount_in_stock,
+                item.image_url,
+                item_in_order.amount_in_order,
+                item_in_order.order_id,
+                item_in_order.id AS iio_id
+            FROM item_in_order
+            JOIN item ON item_in_order.item_id = item.id
+            WHERE item_in_order.order_id = :order_id;
+        """
+
+        item_rows = await database.fetch_all(
+            query_items,
+            values={"order_id": order_row["order_id"]}
+        )
 
         order_items = []
         total_price = 0.0
@@ -218,21 +248,28 @@ async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
 
         for row in item_rows:
             item_instance = ItemResponse(
+                id=int(row["item_id"]),
                 item_name=row["item_name"],
-                price=row["price"],
+                price=float(row["price"]),
+                amount_in_stock=int(row["amount_in_stock"]),
+                image_url=row["image_url"] or "https://katzr.net/a0cf43"
             )
 
             order_item_instance = ItemInOrderResponse(
+                id=int(row["iio_id"]),
                 item=item_instance,
-                amount_in_order=row["amount_in_order"],
-                total_price=float(row["price"]) * row["amount_in_order"]
+                amount_in_order=int(row["amount_in_order"]),
+                total_price=float(row["price"]) * int(row["amount_in_order"]),
+                order_id=int(row["order_id"])
             )
+
             order_items.append(order_item_instance)
+
             total_price += order_item_instance.total_price
-            total_amount += row["amount_in_order"]
+            total_amount += int(row["amount_in_order"])
 
         customer_instance = UserResponse(
-            user_id=order_row["user_id"],
+            user_id=int(order_row["user_id"]),
             first_name=order_row["first_name"],
             last_name=order_row["last_name"],
             email=order_row["email"],
@@ -243,7 +280,7 @@ async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
 
         all_orders.append(
             OrderResponse(
-                id=order_row["order_id"],
+                id=int(order_row["order_id"]),
                 order_status=order_row["order_status"],
                 customer=customer_instance,
                 order_date=order_row["order_date"],
@@ -306,43 +343,44 @@ async def delete_order(order_id: int):
 
 
 async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
+    # 1. קבלת ההזמנה הזמנית
     query_order = """
         SELECT 
-            orders.id AS order_id,
-            orders.buyer_id,
-            orders.order_status,
-            orders.order_date,
-            orders.order_address,
-            users.id AS user_id,
-            users.first_name,
-            users.last_name,
-            users.email,
-            users.phone,
-            users.address AS user_address,
-            users.user_name
-        FROM orders
-        JOIN users ON orders.buyer_id = users.id
-        WHERE buyer_id = :buyer_id AND LOWER(order_status) = :status
+            o.id AS order_id,
+            o.buyer_id,
+            o.order_status,
+            o.order_date,
+            o.order_address,
+            u.id AS user_id,
+            u.first_name,
+            u.last_name,
+            u.email,
+            u.phone,
+            u.address AS user_address,
+            u.user_name
+        FROM orders o
+        JOIN users u ON o.buyer_id = u.id
+        WHERE o.buyer_id = :buyer_id AND LOWER(o.order_status) = :status
     """
-
-    order_row = await database.fetch_one(
-        query_order,
-        values={"buyer_id": buyer_id, "status": "temp"}
-    )
+    order_row = await database.fetch_one(query_order, values={"buyer_id": buyer_id, "status": "temp"})
     if not order_row:
         return None
 
+    # 2. קבלת כל הפריטים של ההזמנה
     query_items = """
-            SELECT 
-                item.id,
-                item.item_name,
-                item.price,
-                item.amount_in_stock,
-                item_in_order.amount_in_order
-            FROM item_in_order
-            JOIN item ON item_in_order.item_id = item.id
-            WHERE item_in_order.order_id = :order_id;
-        """
+        SELECT 
+            iio.id AS iio_id,
+            iio.order_id,
+            i.id AS item_id,
+            i.item_name,
+            i.price,
+            i.amount_in_stock,
+            i.image_url,
+            iio.amount_in_order
+        FROM item_in_order iio
+        JOIN item i ON iio.item_id = i.id
+        WHERE iio.order_id = :order_id
+    """
     item_rows = await database.fetch_all(query_items, values={"order_id": order_row["order_id"]})
 
     order_items = []
@@ -351,19 +389,27 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
 
     for row in item_rows:
         item_instance = ItemResponse(
+            id=int(row["item_id"]),
             item_name=row["item_name"],
-            price=row["price"],
+            price=float(row["price"]),
+            amount_in_stock=int(row["amount_in_stock"]),
+            image_url=row["image_url"] or "https://katzr.net/a0cf43"
         )
 
         order_item_instance = ItemInOrderResponse(
+            id=int(row["iio_id"]),
+            order_id=int(row["order_id"]),
             item=item_instance,
-            amount_in_order=row["amount_in_order"],
-            total_price=float(row["price"]) * row["amount_in_order"]
+            amount_in_order=int(row["amount_in_order"]),
+            total_price=float(row["price"]) * int(row["amount_in_order"])
         )
+
         order_items.append(order_item_instance)
         total_price += order_item_instance.total_price
+        total_amount += int(row["amount_in_order"])
+
     customer_instance = UserResponse(
-        user_id=order_row["buyer_id"],
+        user_id=int(order_row["user_id"]),
         first_name=order_row["first_name"],
         last_name=order_row["last_name"],
         email=order_row["email"],
@@ -373,7 +419,7 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
     )
 
     return OrderResponse(
-        id=order_row["order_id"],
+        id=int(order_row["order_id"]),
         order_status=order_row["order_status"],
         customer=customer_instance,
         order_date=order_row["order_date"],
@@ -388,10 +434,15 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
 async def close_order(order_id: int):
     query = f"""
         UPDATE {TABLE_NAME}
-        SET order_status = :status
+        SET order_status = :status,
+            order_date = :order_date
         WHERE id = :order_id
     """
-    values = {"status": "close", "order_id": order_id}
+    values = {
+        "status": "close",
+        "order_date": datetime.now(),
+        "order_id": order_id
+    }
     await database.execute(query, values)
 
 async def get_closed_orders_summary_by_user(user_id: int) -> List[OrderSummary]:
@@ -404,7 +455,7 @@ async def get_closed_orders_summary_by_user(user_id: int) -> List[OrderSummary]:
     FROM {TABLE_NAME} o
     JOIN item_in_order iio ON iio.order_id = o.id
     JOIN item i ON i.id = iio.item_id
-    WHERE o.buyer_id = :user_id AND o.order_status = 'closed'
+    WHERE o.buyer_id = :user_id AND o.order_status = 'close'
     GROUP BY o.id, o.order_date
     ORDER BY o.order_date DESC;
     """

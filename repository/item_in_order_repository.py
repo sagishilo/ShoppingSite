@@ -9,20 +9,21 @@ TABLE_NAME = "item_in_order"
 async def get_by_id(item_in_order_id: int):
     query = f"""
         SELECT 
-            iio.id AS item_in_order_id,
+            iio.id AS iio_id,
             iio.order_id,
             i.id AS item_id,
             i.item_name,
             i.price,
             i.image_url,
+            i.amount_in_stock,
             iio.amount_in_order,
             (i.price * iio.amount_in_order) AS total_price
         FROM {TABLE_NAME} iio
         JOIN item i ON iio.item_id = i.id
-        WHERE iio.id = :item_in_order_id;
+        WHERE iio.id = :iio_id;
     """
 
-    row = await database.fetch_one(query, {"item_in_order_id": item_in_order_id})
+    row = await database.fetch_one(query, {"iio_id": item_in_order_id})
     if not row:
         return None
 
@@ -32,10 +33,12 @@ async def get_by_id(item_in_order_id: int):
         id=int(data["item_id"]),
         item_name=str(data["item_name"]),
         price=float(data["price"]),
+        amount_in_stock=int(data["amount_in_stock"]),
         image_url=str(data.get("image_url") or "")
     )
 
     return ItemInOrderResponse(
+        id=int(data["iio_id"]),
         order_id=int(data["order_id"]),
         item=item_data,
         amount_in_order=int(data["amount_in_order"]),
@@ -45,11 +48,12 @@ async def get_by_id(item_in_order_id: int):
 
 async def is_in_order(item_id: int, order_id: int):
     query = f"""
-        SELECT 
+        SELECT  
             iio.*, 
             i.item_name, 
             i.price, 
-            i.image_url
+            i.image_url,
+            i.amount_in_stock
         FROM {TABLE_NAME} iio
         JOIN item i ON iio.item_id = i.id
         WHERE iio.order_id = :order_id AND iio.item_id = :item_id;
@@ -59,15 +63,17 @@ async def is_in_order(item_id: int, order_id: int):
     if row:
         data = dict(row)
         return ItemInOrderResponse(
-            order_id=data["order_id"],
+            id=int(data["id"]),
+            order_id=int(data["order_id"]),
             item=ItemResponse(
-                id=data["item_id"],
+                id=int(data["item_id"]),
                 item_name=data["item_name"],
                 price=float(data["price"]),
+                amount_in_stock=int(data["amount_in_stock"]),
                 image_url=data.get("image_url", "")
             ),
-            amount_in_order=data["amount_in_order"],
-            total_price=float(data["price"] * data["amount_in_order"])
+            amount_in_order=int(data["amount_in_order"]),
+            total_price=float(data["price"] * int(data["amount_in_order"]))
         )
     return None
 
@@ -78,14 +84,23 @@ async def get_id_by_item_and_order(item_id: int, order_id: int) -> Optional[int]
     return row["id"] if row else None
 
 
+async def get_all_item_ids_by_order(order_id: int):
+    query = f"SELECT item_id ,amount_in_order FROM {TABLE_NAME} WHERE order_id = :order_id"
+    rows = await database.fetch_all(query, {"order_id": order_id})
+    return rows
+
+
+
+
 
 async def get_all_by_order_id(order_id: int):
     query = f"""
-    SELECT 
+    SELECT  
         i.id AS item_id,
         i.item_name,
         i.price,
         i.image_url,
+        i.amount_in_stock,
         iio.id AS iio_id,
         iio.amount_in_order,
         iio.order_id
@@ -104,10 +119,12 @@ async def get_all_by_order_id(order_id: int):
             id=int(data["item_id"]),
             item_name=data["item_name"],
             price=float(data["price"]),
+            amount_in_stock=int(data["amount_in_stock"]),
             image_url=data.get("image_url") or "https://katzr.net/a0cf43"
         )
 
         iio_obj = ItemInOrderResponse(
+            id=int(data["iio_id"]),
             item=item_obj,
             amount_in_order=int(data["amount_in_order"]),
             total_price=float(data["price"]) * int(data["amount_in_order"]),

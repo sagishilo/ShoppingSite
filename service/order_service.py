@@ -1,7 +1,6 @@
 
 from typing import List, Optional
 from model.exceptions import CustomExceptions
-from model.order import Order
 from model.order_request import OrderRequest
 from model.order_response import OrderResponse
 from model.order_status import OrderStatus
@@ -115,6 +114,7 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
 ## Checks if order exists
 async def close_order(order_id: int):
     if await validate_order_exists(order_id):
+        await item_in_order_service.stock_update(order_id)
         await order_repository.close_order(order_id)
     else:
         raise ex.order_not_found_exception()

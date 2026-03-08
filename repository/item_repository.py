@@ -20,6 +20,7 @@ async def get_by_id(item_id: int) ->Optional[ItemResponse]:
             id=result["id"],
             item_name=result["item_name"],
             price=result["price"],
+            amount_in_stock=result["amount_in_stock"],
             image_url=result["image_url"])
     else:
         return None
@@ -83,6 +84,7 @@ async def get_all() ->List[ItemResponse]:
         id=row["id"],
         item_name=row["item_name"],
         price=row["price"],
+        amount_in_stock= row["amount_in_stock"],
         image_url=row["image_url"]) for row in result]
     return items
 

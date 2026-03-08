@@ -1,11 +1,11 @@
-from typing import List, Optional, Any, Coroutine
+from typing import List, Optional
 
 from model.exceptions import CustomExceptions
 from model.item import Item
 from model.item_request import ItemRequest
 from model.item_response import ItemResponse
 from repository import item_repository
-from service import favorite_item_service, item_in_order_service
+from service import favorite_item_service
 
 ex=CustomExceptions()
 

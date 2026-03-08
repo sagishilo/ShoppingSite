@@ -51,16 +51,32 @@ async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
         await item_in_order_repository.update_item_amount_in_order(iio_id, new_amount)
         return iio_id
 
-    await item_service.update_amount(item.item_id, item.amount_in_order)
     return await item_in_order_repository.add_item_to_order(item)
+
+
+async def stock_update(order_id: int):
+    items= await item_in_order_repository.get_all_item_ids_by_order(order_id)
+    for i in items:
+        await item_service.update_amount(int(i["item_id"]), int(i["amount_in_order"]))
+
 
 
 ## Updates the amount of an item in order
 ## Returns the number of rows updated
-async def update_item_amount_in_order(item_in_order: ItemInOrder, new_amount_in_order: int):
-    if not await is_in_order(item_in_order.item_id, item_in_order.order_id):
+async def update_item_amount_in_order(item_in_order: ItemInOrderResponse, new_amount_in_order: int):
+    item_id = item_in_order.item.id
+    order_id = item_in_order.order_id
+    # בדיקה אם הפריט קיים בהזמנה
+    if not await is_in_order(item_id, order_id):
         raise ex.item_in_order_not_found_exception()
-    await item_in_order_repository.update_item_amount_in_order(item_in_order.id, new_amount_in_order)
+    # עדכון הכמות בדאטה בייס
+    rows_updated = await (item_in_order_repository.update_item_amount_in_order
+                          (item_in_order.id, new_amount_in_order))
+    # אם לא עודכנה אף שורה – ייתכן שהפריט כבר נמחק
+    if rows_updated == 0:
+        raise ex.item_in_order_not_found_exception()
+
+    return rows_updated
 
 
 ## Deletes an item from an order by its id
