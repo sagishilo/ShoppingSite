@@ -1,6 +1,5 @@
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
-from model.item import Item
 from model.item_request import ItemRequest
 from model.item_response import ItemResponse
 from service import item_service
