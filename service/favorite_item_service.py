@@ -43,6 +43,8 @@ async def unfav_item(fav: FavoriteItemRequest):
     is_fav= await favorite_item_repository.is_fav(fav)
     if is_fav:
         return await favorite_item_repository.unfav_item(fav)
-    return ex.item_not_fav_exception()
+    raise ex.item_not_fav_exception()
 
+async def unfav_items_for_user(user_id: int):
+    await favorite_item_repository.unfav_items_for_user(user_id)
 

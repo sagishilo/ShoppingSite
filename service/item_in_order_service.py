@@ -85,3 +85,17 @@ async def delete_item_in_order_by_id(item_in_order_id: int) -> int:
     if not await validate_item_in_order_exists(item_in_order_id):
         raise ex.item_in_order_not_found_exception()
     return await item_in_order_repository.delete_item_in_order_by_id(item_in_order_id)
+
+
+## Deletes an item from an order by its order id
+## Returns the number of rows deleted
+async def delete_item_in_order_by_order_id(order_id: int):
+    await item_in_order_repository.order_deleted(order_id)
+
+
+## Deletes an item from an order by its item id
+## Returns the number of rows deleted
+async def delete_item_in_order_by_item_id(item_id: int) -> int:
+    if not await item_service.get_item_by_id(item_id):
+        raise ex.item_not_found_exception()
+    return await item_in_order_repository.item_deleted(item_id)

@@ -1,5 +1,4 @@
 from typing import Optional, List
-from model.favorite_item import FavoriteItem
 from model.favorite_item_request import FavoriteItemRequest
 from model.item_response import ItemResponse
 from repository.database import database
@@ -89,6 +88,11 @@ async def unfav_item(fav: FavoriteItemRequest):
              "item_id":fav.item_id}
     await database.execute(query, values)
     return fav.id
+
+async def unfav_items_for_user(user_id: int):
+    query = f"DELETE FROM {TABLE_NAME} WHERE user_id= :user_id"
+    values ={"user_id":user_id}
+    await database.execute(query, values)
 
 
 async def is_fav(fav: FavoriteItemRequest):

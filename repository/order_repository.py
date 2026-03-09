@@ -78,7 +78,7 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
         total_amount += row["amount_in_order"]
 
     customer_instance = UserResponse(
-        user_id=order_row["buyer_id"],
+        id=order_row["buyer_id"],
         first_name=order_row["first_name"],
         last_name=order_row["last_name"],
         email=order_row["email"],
@@ -171,7 +171,7 @@ async def get_all() -> List[OrderResponse]:
             total_amount += int(row["amount_in_order"])
 
         customer_instance = UserResponse(
-            user_id=int(order_row["user_id"]),
+            id=int(order_row["user_id"]),
             first_name=order_row["first_name"],
             last_name=order_row["last_name"],
             email=order_row["email"],
@@ -269,7 +269,7 @@ async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
             total_amount += int(row["amount_in_order"])
 
         customer_instance = UserResponse(
-            user_id=int(order_row["user_id"]),
+            id=int(order_row["user_id"]),
             first_name=order_row["first_name"],
             last_name=order_row["last_name"],
             email=order_row["email"],
@@ -292,6 +292,16 @@ async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
         )
 
     return all_orders
+
+
+async def get_all_id_by_user(buyer_id: int) -> List[int]:
+    query_orders = f"SELECT id FROM {TABLE_NAME} WHERE buyer_id = :buyer_id;"
+    values = {"buyer_id": buyer_id}
+    rows = await database.fetch_all(query_orders, values)
+    return [row["id"] for row in rows]
+
+
+
 
 
 ## Creates a new order
@@ -340,6 +350,12 @@ async def delete_order(order_id: int):
     values = {"order_id": order_id}
     await database.execute(query, values)
     return order_id
+
+
+async def delete_orders_for_user(buyer_id: int):
+    query = f"DELETE FROM {TABLE_NAME} WHERE buyer_id = :buyer_id"
+    values = {"buyer_id": buyer_id}
+    await database.execute(query, values)
 
 
 async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
@@ -409,7 +425,7 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
         total_amount += int(row["amount_in_order"])
 
     customer_instance = UserResponse(
-        user_id=int(order_row["user_id"]),
+        id=int(order_row["user_id"]),
         first_name=order_row["first_name"],
         last_name=order_row["last_name"],
         email=order_row["email"],
@@ -450,6 +466,7 @@ async def get_closed_orders_summary_by_user(user_id: int) -> List[OrderSummary]:
     SELECT 
         o.id AS order_id,
         o.order_date,
+        o.order_address,
         SUM(iio.amount_in_order) AS total_items,
         SUM(iio.amount_in_order * i.price) AS total_price
     FROM {TABLE_NAME} o
@@ -464,6 +481,7 @@ async def get_closed_orders_summary_by_user(user_id: int) -> List[OrderSummary]:
     return [OrderSummary(
         order_id=o["order_id"],
         order_date=o["order_date"],
+        order_address=o["order_address"],
         total_items=int(o["total_items"]),
         total_price=float(o["total_price"])
     ) for o in orders]

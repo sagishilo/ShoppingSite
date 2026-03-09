@@ -6,7 +6,8 @@ from model.user_response import UserResponse
 from repository import user_repository
 from passlib.context import CryptContext
 
-from service import order_service
+from repository.database import database
+from service import order_service, favorite_item_service, item_in_order_service
 
 ex=CustomExceptions()
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -58,11 +59,11 @@ async def get_all() -> List[UserResponse]:
 
 ## Checks if the wanted user exists
 ## If it doesn't - Creates a new user
-async def create_user(new_user: UserRequest) -> int:
+async def create_user(new_user: UserRequest) -> UserResponse:
     if await validate_unique_user_name(new_user.user_name):
         hashed_password = get_password_hash(new_user.password)
         user_id = await user_repository.create_user(new_user, hashed_password)
-        return user_id
+        return await user_repository.get_by_id(user_id)
     else:
         print("username is already existing")
         raise ex.username_taken_exception()
@@ -85,17 +86,32 @@ async def update_user(user_id: int, updated_user: UserRequest):
 
 
 ## Checks if the wanted user exists
-## Deletes the user and his temp order if exist
+## Deletes the user and all his data
 async def delete_user(user_id: int) -> Optional[str]:
     existing_user = await user_repository.get_by_id(user_id)
     if not existing_user:
         raise ex.user_not_found_exception()
-    temp_order=await order_service.get_temp_order_by_user(user_id)
-    temp_order_id=temp_order.id
-    if temp_order_id is not None:
-        await order_service.delete_order(temp_order_id)
-    await user_repository.delete_user(user_id)
-    return f"The user with id {user_id} was deleted"
+    async with database.transaction():
+
+        # מחיקת מועדפים
+        await favorite_item_service.unfav_items_for_user(user_id)
+
+        # מחיקת תוכן ההזמנות
+        order_ids = await order_service.get_all_id_by_user(user_id)
+        for o in order_ids:
+            await item_in_order_service.delete_item_in_order_by_order_id(o)
+
+        # מחיקת ההזמנות עצמן
+        await order_service.delete_orders_for_user(user_id)
+
+        # מחיקת המשתמש
+        await user_repository.delete_user(user_id)
+
+    return f"The user with id {user_id} and all associated data were deleted"
+
+
+
+
 
 async def user_login(login_request: LoginRequest) -> Optional[UserResponse]:
     user_id = await user_repository.user_login(login_request)

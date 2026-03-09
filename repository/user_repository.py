@@ -12,7 +12,7 @@ TABLE_NAME = "users"
 async def get_by_id(user_id: int) -> Optional[UserResponse]:
     query = f"""
         SELECT 
-            id AS user_id,
+            id,
             first_name,
             last_name,
             email,
@@ -89,10 +89,14 @@ async def delete_user(user_id: int):
     return user_id
 
 
+
+
+
 ## Returns a user by user_name
 async def get_by_user_name(user_name: str) -> Optional[UserResponse]:
     query = f"""
         SELECT 
+            id,
             first_name,
             last_name,
             email,
@@ -118,10 +122,7 @@ async def user_login(login_request: LoginRequest) -> Optional[int]:
 
     if row is None:
         return None
-
-        # הדרך הכי בטוחה בגרסאות החדשות:
     row_dict = dict(row._mapping)
-
     hashed = row_dict.get("hashed_password")
     user_id = row_dict.get("id")
 

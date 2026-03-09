@@ -62,6 +62,13 @@ async def get_all_orders_by_user(buyer_id: int) -> List[OrderResponse]:
     return await order_repository.get_all_by_user(buyer_id)
 
 
+async def get_all_id_by_user(buyer_id: int) -> List[int]:
+    if not await validate_user_exists(buyer_id):
+        raise ex.user_not_found_exception()
+    return await order_repository.get_all_id_by_user(buyer_id)
+
+
+
 ## Creates a new order
 ## Checks if user exists and order status is valid
 async def create_order(new_order: OrderRequest) -> int:
@@ -100,6 +107,11 @@ async def delete_order(order_id: int) -> Optional[str]:
     await order_repository.delete_order(order_id)
     return f"The order with id {order_id} was deleted"
 
+
+async def delete_orders_for_user(buyer_id: int):
+    if not await validate_user_exists(buyer_id):
+        raise ex.user_not_found_exception()
+    await order_repository.delete_orders_for_user(buyer_id)
 
 
 ##gets the open order by user id

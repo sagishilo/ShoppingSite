@@ -1,5 +1,4 @@
 import datetime
-import re
 import streamlit as st
 import requests
 import pandas as pd
@@ -49,15 +48,15 @@ def show_user_dashboard():
         st.warning("❌ עליך להתחבר כדי לראות את האזור האישי")
         return
 
-    user_id = st.session_state["user"]["user_id"]
+    user_id = st.session_state["user"]["id"]
     colss = st.columns([1, 1, 2, 1, 1])
     with colss[2]:
         st.title("אזור אישי 👤",  )
 
     st.divider()
-    st.subheader(" הזמנות סגורות 📦")
+    # --------------------- הזמנות סגורות ---------------------
+    st.subheader("הזמנות סגורות 📦")
 
-    # ---- הזמנות סגורות ----
     try:
         res_orders = requests.get(f"{API_URL}/order/user/closed/{user_id}", timeout=5)
         if res_orders.status_code == 200:
@@ -65,15 +64,50 @@ def show_user_dashboard():
             if not orders:
                 st.info("לא נמצאו הזמנות סגורות")
             else:
-                for o in orders:
-                    order_date = datetime.datetime.fromisoformat(o["order_date"]).strftime("%d/%m/%Y")
-                    st.write(f"**הזמנה #{o.get('order_id', 'N/A')}**")
-                    st.caption(f"תאריך: {order_date} | סה\"כ מוצרים: {o.get('total_items', 0)} | סכום כולל: ₪{o.get('total_price', 0)}")
-                    st.divider()
+                for i in range(0, len(orders), 5):
+                    cols = st.columns(5)
+                    chunk = orders[i: i + 5]
+
+                    for idx, o in enumerate(chunk):
+                        with cols[idx]:
+                            with st.container(border=True):
+                                o_id = o.get('order_id')
+                                raw_date = o.get("order_date", "")
+                                order_date = datetime.datetime.fromisoformat(raw_date).strftime(
+                                    "%d/%m") if raw_date else "N/A"
+
+                                st.markdown(f"**# {o_id}**")
+                                st.caption(f"📅 {order_date} | ₪{o.get('total_price', 0)}")
+
+                                # כפתור "פרטים" קטן שפותח פופ-אפ (Modal) כדי לא להרוס את הגריד
+                                if st.button("פרטים", key=f"btn_{o_id}"):
+                                    @st.dialog(f"פירוט הזמנה {o_id}")
+                                    def show_order_details(order_info):
+                                        st.write(f"📍 **כתובת משלוח:** {order_info.get('order_address', 'לא צוינה')}")
+                                        st.write(f"💰 **סכום סופי:** ₪{order_info.get('total_price', 0)}")
+                                        st.write(f"🔢 **כמות פריטים:** {order_info.get('total_items', 0)}")
+                                        st.divider()
+
+                                        # קריאה למוצרים
+                                        items_res = requests.get(f"{API_URL}/item-in-order/order/{o_id}", timeout=5)
+                                        if items_res.status_code == 200:
+                                            items_data = items_res.json()
+                                            for item_entry in items_data:
+                                                if isinstance(item_entry, dict):
+                                                    name = item_entry.get('item', {}).get('item_name', 'מוצר')
+                                                    qty = item_entry.get('amount_in_order', 0)
+                                                    st.write(f"📦 {name}       \n כמות:  {qty}")
+                                                else:
+                                                    st.error("פורמט נתונים לא תקין")
+                                        else:
+                                            st.error("לא הצלחנו לטעון את המוצרים")
+
+                                    show_order_details(o)
         else:
             st.toast(f"שגיאה בטעינת ההזמנות: {res_orders.text}")
     except Exception as e:
-        st.toast(f"שגיאה בתקשורת: {e}")
+        st.error(f"שגיאה בתקשורת: {e}")
+
 
     st.subheader("המועדפים שלי❤️")
 
@@ -120,7 +154,7 @@ def show_user_dashboard():
                     with cols[1]:
                         st.markdown(f"💰 {row['מחיר (₪)']}")
                     with cols[2]:
-                        st.markdown(f"{row['מלאי']}")
+                        st.markdown(f" left in stock {row['מלאי']}")
                     with cols[3]:
                         # Checkbox למעקב מועדפים
                         st.checkbox(
@@ -135,6 +169,48 @@ def show_user_dashboard():
             st.toast(f"שגיאה בטעינת המוצרים המועדפים: {res_fav.text}")
     except Exception as e:
         st.toast(f"שגיאה בתקשורת: {e}")
+
+    ##----------------מחיקת משתמש-------------------
+    st.divider()
+    st.subheader("⚙️ ניהול חשבון")
+
+    with st.expander("🔴 אזור מסוכן: מחיקת חשבון לצמיתות"):
+        st.warning("""
+                שים לב: מחיקת החשבון היא פעולה בלתי הפיכה. 
+                כל המידע שלך יימחק לצמיתות מהמערכת, כולל:
+                * היסטוריית הזמנות
+                * רשימת מוצרים מועדפים
+                * פרטי התקשרות וכתובות
+            """)
+
+        # תיבת אישור חובה להפעלת הכפתור
+        confirm_deletion = st.checkbox(
+            "אני מאשר שאני מעוניין למחוק את החשבון שלי וכל המידע הקשור אליו",
+            key="delete_confirm_check"
+        )
+
+        # הכפתור פעיל רק אם הצ'קבוקס מסומן
+        if st.button("מחק את החשבון שלי לצמיתות", type="primary", disabled=not confirm_deletion):
+            try:
+                res_delete = requests.delete(f"{API_URL}/user/{user_id}", timeout=10)
+
+                if res_delete.status_code == 200:
+                    st.success("החשבון נמחק בהצלחה. להתראות!")
+                    # ניקוי ה-Session State כדי לנתק את המשתמש
+                    st.session_state.clear()
+
+                    # השהייה קלה כדי שהמשתמש יראה את הודעת ההצלחה
+                    import time
+                    time.sleep(1)
+
+                    # העברה לדף הבית וריענון
+                    st.session_state["page"] = "home"
+                    st.rerun()
+                else:
+                    st.error(f"המחיקה נכשלה: {res_delete.text}")
+            except Exception as e:
+                st.error(f"שגיאה בתקשורת עם השרת: {e}")
+
 
 
 def show_order_success_page():
@@ -233,7 +309,7 @@ def toggle_favorite(user_id, item_id, is_favorite):
 
 def load_temp_cart():
     try:
-        user_id = st.session_state["user"]["user_id"]
+        user_id = st.session_state["user"]["id"]
         res_order = requests.get(f"{API_URL}/order/user/temp/{user_id}", timeout=5)
         if res_order.status_code == 200 and res_order.json():
             order = res_order.json()
@@ -391,10 +467,10 @@ def sync_cart_from_db():
 
 def new_order():
     user = st.session_state.get("user")
-    if not user or "user_id" not in user:
+    if not user or "id" not in user:
         st.toast("❌ אין משתמש מחובר")
         return
-    user_id = user["user_id"]
+    user_id = user["id"]
     try:
         # 1. הגדרת הכתובת בצורה נקייה
         clean_url = f"{API_URL.strip('/')}/order/"
@@ -485,13 +561,9 @@ def show_home_page():
     if "favorites" not in st.session_state:
         st.session_state["favorites"] = []
     if "favorites_loaded" not in st.session_state and st.session_state["user"]:
-        user_id = int(st.session_state["user"]["user_id"])
+        user_id = int(st.session_state["user"]["id"])
         st.session_state["favorites"] = get_user_favorites(user_id)
         st.session_state["favorites_loaded"] = True
-
-
-
-
 
 
     # ---------- סנכרון עגלה ----------
@@ -499,47 +571,52 @@ def show_home_page():
         sync_cart_from_db()
         st.session_state["cart_loaded"] = True
 
+        # ---------- סנכרון שורות חיפוש ----------
+    search_keys = ["search_name_input", "stock_val", "price_val", "stock_op", "price_op"]
 
+    # 1. הגדרת המפתחות
+    search_keys = ["search_name_input", "stock_op", "stock_val", "price_op", "price_val"]
 
+    # 2. פונקציית ה-Callback לניקוי (תרוץ לפני רינדור הווידג'טים)
+    def reset_filters():
+        for key in search_keys:
+            st.session_state[key] = ""
 
+    with st.form("filter_form"):
+        search_center, col_stock, col_stock_val, col_price, col_price_val = st.columns([2, 1, 1, 1, 1])
+        with search_center:
+            # שימוש ב-key מבטיח ש-product_name_query תמיד יסונכרן עם ה-session_state
+            product_name_query = st.text_input("שם מוצר", placeholder="חיפוש...", key="search_name_input")
 
-
-    # ---------- SEARCH FILTERS ----------
-    search_center, col_stock, col_stock_val,col_price, col_price_val, clr_btn = st.columns([2, 1, 1, 1, 1,0.5])
-    with search_center:
-        # שם מוצר
-        product_name_query = st.text_input(
-            "שם מוצר",
-            placeholder="לדוגמה: 'banana apple'",
-            value=st.session_state.get("search_name_val", ""),
-            key="search_name_input"
-        )
-        st.session_state["search_name_val"] = product_name_query
-
-        # כמות במלאי
         with col_stock:
             stock_op = st.selectbox("מלאי", ["", "מתחת", "מעל", "כמות מדוייקת"], key="stock_op")
-        with col_stock_val:
-            stock_val = st.text_input("", key="stock_val")
 
-        # מחיר
+        with col_stock_val:
+            stock_val = st.text_input("כמות", key="stock_val")
+
         with col_price:
             price_op = st.selectbox("מחיר", ["", "מתחת", "מעל", "מחיר מדוייק"], key="price_op")
+
         with col_price_val:
-            price_val = st.text_input("", key="price_val")
+            price_val = st.text_input("ערך", key="price_val")
 
+        col_submit, col_reset = st.columns([1, 1])
+        with col_submit:
+            submitted = st.form_submit_button("🔍 חפש", use_container_width=True)
+        with col_reset:
+            # בתוך טופס, כפתור ניקוי רגיל עדיין יעבוד עם ה-callback
+            st.form_submit_button("🗑️ נקה", on_click=reset_filters, use_container_width=True)
 
-
-    #st.markdown("### 🔥 כל המוצרים")
-
-    # ---------- טעינת מוצרים ----------
+    # --- טעינה וסינון ---
     try:
         response = requests.get(f"{API_URL}/item/", timeout=5)
+        response.raise_for_status()
         all_products = response.json()
     except Exception:
-        st.toast("❌ לא ניתן לטעון מוצרים מהשרת.")
+        st.error("❌ שגיאה בתקשורת עם השרת")
         return
 
+    # סינון התוצאות
     products = filter_products_advanced(
         all_products,
         name_query=product_name_query,
@@ -549,13 +626,9 @@ def show_home_page():
         price_val=price_val
     )
 
-    if st.button("נקה", use_container_width=True):
-        for key in ["search_name_val", "stock_val", "price_val", "stock_op", "price_op"]:
-            st.session_state[key] = st.session_state.get(key, "")
-        products = all_products
-
-    if not products:
-        st.toast("לא נמצאו מוצרים התואמים לחיפוש שלך")
+    # הצגת התוצאות
+    if not products and (product_name_query or stock_val or price_val):
+        st.toast("לא נמצאו מוצרים, מציג את כל הרשימה")
         products = all_products
 
 
@@ -607,7 +680,7 @@ def show_home_page():
 
                 with col_fav:
                     if st.session_state["user"]:
-                        u_id = int(st.session_state["user"]["user_id"])
+                        u_id = int(st.session_state["user"]["id"])
                         p_id = int(product["id"])
                         favorites = st.session_state.get("favorites", [])
                         is_fav = p_id in favorites
@@ -739,19 +812,41 @@ def show_register_page():
                 "first_name": first_name, "last_name": last_name, "email": email,
                 "phone": phone, "address": address, "user_name": user_name, "password": password
             }
+            success = False
             try:
-                res = requests.post(f"{API_URL}/user/", json=payload, timeout=5)
+                res = requests.post(f"{API_URL}/user/", json=payload, timeout=10)
+
                 if res.status_code in (200, 201):
-                    st.success("נרשמת בהצלחה!")
-                    user_data = res.json()
-                    st.session_state["user"] = user_data
-                    st.session_state.pop("favorites_loaded", None)
+                    st.session_state["user"] = res.json()
                     st.session_state["page"] = "home"
-                    st.rerun()
+                    st.session_state.pop("favorites_loaded", None)
+                    success = True
                 else:
-                    st.toast(f"שגיאה: {res.text}")
-            except:
-                st.toast("חיבור לשרת נכשל")
+                    # חילוץ הודעת השגיאה מה-JSON של השרת
+                    try:
+                        error_data = res.json()
+                        # FastAPI שם את השגיאה בדרך כלל תחת המפתח 'detail'
+                        error_msg = error_data.get("detail", str(error_data))
+                    except:
+                        error_msg = res.text
+
+                    if "username is already existing" in error_msg.lower() or "taken" in error_msg.lower():
+                        st.error("⚠️ שם המשתמש כבר תפוס, בחר שם אחר.")
+                    elif "validation error" in error_msg.lower():
+                        # זה המקרה של ה-ID החסר שראינו קודם
+                        st.warning("המשתמש נוצר אך חלה שגיאה בטעינת הנתונים. נסה להתחבר.")
+                        st.info(f"פרטים טכניים: {error_msg}")
+                    else:
+                        st.error(f"שגיאה מהשרת: {error_msg}")
+
+            except Exception as e:
+                st.error(f"❌ חיבור לשרת נכשל: {e}")
+
+            if success:
+                st.success("✅ נרשמת בהצלחה!")
+                import time
+                time.sleep(0.5)
+                st.rerun()
 
 
 def show_login_page():

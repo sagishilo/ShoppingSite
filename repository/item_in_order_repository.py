@@ -167,8 +167,8 @@ async def update_item_amount_in_order(item_in_order_id: int, new_amount_in_order
 
 
 async def delete_item_in_order_by_id(item_in_order_id: int) -> Optional[int]:
-    query = """
-    DELETE FROM item_in_order
+    query = f"""
+    DELETE FROM {TABLE_NAME}
     WHERE id = :item_in_order_id;
     """
     values = {"item_in_order_id": item_in_order_id}
@@ -176,9 +176,19 @@ async def delete_item_in_order_by_id(item_in_order_id: int) -> Optional[int]:
     return rows_deleted
 
 
+
+async def order_deleted(order_id: int) -> Optional[int]:
+    query = f"""
+    DELETE FROM {TABLE_NAME}
+    WHERE order_id = :order_id;
+    """
+    values = {"order_id": order_id}
+    await database.execute(query=query, values=values)
+
+
 async def item_deleted(item_id: int) -> int:
-    query = """
-    DELETE FROM item_in_order
+    query = f"""
+    DELETE FROM {TABLE_NAME}
     WHERE item_id = :item_id;
     """
     return await database.execute(query, {"item_id": item_id})
