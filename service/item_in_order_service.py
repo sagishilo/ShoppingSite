@@ -48,7 +48,8 @@ async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
         await item_service.update_amount(item.item_id, item.amount_in_order)
 
         iio_id = await item_in_order_repository.get_id_by_item_and_order(item.item_id, item.order_id)
-        await item_in_order_repository.update_item_amount_in_order(iio_id, new_amount)
+        iio=await item_in_order_repository.get_by_id(iio_id)
+        await item_in_order_repository.update_item_amount_in_order(iio, new_amount)
         return iio_id
 
     return await item_in_order_repository.add_item_to_order(item)
@@ -71,7 +72,7 @@ async def update_item_amount_in_order(item_in_order: ItemInOrderResponse, new_am
         raise ex.item_in_order_not_found_exception()
     # עדכון הכמות בדאטה בייס
     rows_updated = await (item_in_order_repository.update_item_amount_in_order
-                          (item_in_order.id, new_amount_in_order))
+                          (item_in_order, new_amount_in_order))
     # אם לא עודכנה אף שורה – ייתכן שהפריט כבר נמחק
     if rows_updated == 0:
         raise ex.item_in_order_not_found_exception()

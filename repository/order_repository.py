@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import List, Optional
 from model.item_in_order_response import ItemInOrderResponse
@@ -6,13 +7,23 @@ from model.order_request import OrderRequest
 from model.order_response import OrderResponse
 from model.order_summary import OrderSummary
 from model.user_response import UserResponse
+from repository import cache_repository
 from repository.database import database
-
 TABLE_NAME = "orders"
+all_cache_key = "all_orders"
+
 
 
 ## Returns an order by id
 async def get_by_id(order_id: int) -> Optional[OrderResponse]:
+
+    cache_key=f"order_{order_id}"
+    if cache_repository.is_key_exists(cache_key):
+        order_dict = json.loads(cache_repository.get_cache_entity(cache_key))
+        return OrderResponse(**order_dict)
+
+
+
     query_order = """
             SELECT 
                 orders.id AS order_id,
@@ -32,6 +43,7 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
             WHERE orders.id = :order_id;
         """
     order_row = await database.fetch_one(query_order, values={"order_id": order_id})
+
     if not order_row:
         return None
 
@@ -87,7 +99,7 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
         user_name=order_row["user_name"]
     )
 
-    return OrderResponse(
+    order= OrderResponse(
         id=order_row["order_id"],
         order_status=order_row["order_status"],
         customer=customer_instance,
@@ -95,12 +107,35 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
         order_address=order_row["order_address"],
         total_price=total_price,
         order_items=order_items,
-        item_amount=total_amount
-)
+        item_amount=total_amount)
 
+    order_json = order.model_dump_json()
+    cache_repository.create_cache_entity(cache_key, order_json)
+
+    return order
+
+
+
+
+async def get_order_id_by_user_id(buyer_id: int):
+    query = f"SELECT id FROM {TABLE_NAME} WHERE buyer_id = :buyer_id"
+    rows = await database.fetch_all(query, {"buyer_id": buyer_id})
+    return rows
+
+
+async def get_buyer_id_by_order_id(order_id: int):
+    query = f"SELECT buyer_id FROM {TABLE_NAME} WHERE id=:order_id"
+    row = await database.fetch_one(query, {"order_id": order_id})
+    if not row:
+        return None
+    return int(row["buyer_id"])
 
 
 async def get_all() -> List[OrderResponse]:
+    if cache_repository.is_key_exists(all_cache_key):
+        orders_dict = json.loads(cache_repository.get_cache_entity(all_cache_key))
+        return [OrderResponse(**order) for order in orders_dict]
+
     query_orders = f"""
         SELECT 
             orders.id AS order_id,
@@ -192,12 +227,19 @@ async def get_all() -> List[OrderResponse]:
                 item_amount=total_amount
             )
         )
-
+    orders_json = json.dumps([order.model_dump() for order in all_orders])
+    cache_repository.create_cache_entity(all_cache_key, orders_json)
     return all_orders
 
 
 ## Returns all orders by user id
 async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
+
+    users_order_cache_key = f"orders_user_{buyer_id}"
+    if cache_repository.is_key_exists(users_order_cache_key):
+        orders_dict = json.loads(cache_repository.get_cache_entity(users_order_cache_key))
+        return [OrderResponse(**order) for order in orders_dict]
+
     query_orders = f"""
         SELECT 
             orders.id AS order_id,
@@ -290,6 +332,8 @@ async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
                 item_amount=total_amount
             )
         )
+        orders_json = json.dumps([order.model_dump() for order in all_orders])
+        cache_repository.create_cache_entity(users_order_cache_key, orders_json)
 
     return all_orders
 
@@ -299,8 +343,6 @@ async def get_all_id_by_user(buyer_id: int) -> List[int]:
     values = {"buyer_id": buyer_id}
     rows = await database.fetch_all(query_orders, values)
     return [row["id"] for row in rows]
-
-
 
 
 
@@ -318,6 +360,9 @@ async def create_order(new_order: OrderRequest) -> int:
     }
 
     last_record_id = await database.execute(query, values)
+    cache_repository.remove_cache_entity(all_cache_key)
+    cache_repository.remove_cache_entity(f"user_order_{new_order.buyer_id}")
+
     return last_record_id
 
 
@@ -341,6 +386,12 @@ async def update_order(order_id: int, updated_order: OrderRequest) -> int:
 
     async with database.transaction():
         result = await database.execute(query, values)
+
+    cache_repository.remove_cache_entity(all_cache_key)
+    cache_repository.remove_cache_entity(f"order_{order_id}")
+    cache_repository.remove_cache_entity(f"user_order_{updated_order.buyer_id}")
+    cache_repository.remove_cache_entity(f"temp_{updated_order.buyer_id}")
+
     return result
 
 
@@ -348,6 +399,14 @@ async def update_order(order_id: int, updated_order: OrderRequest) -> int:
 async def delete_order(order_id: int):
     query = f"DELETE FROM {TABLE_NAME} WHERE id = :order_id"
     values = {"order_id": order_id}
+
+    buyer_id= await get_buyer_id_by_order_id(order_id)
+    cache_repository.remove_cache_entity(f"user_order_{buyer_id}")
+    cache_repository.remove_cache_entity(all_cache_key)
+    cache_repository.remove_cache_entity(f"order_{order_id}")
+    cache_repository.remove_cache_entity(f"temp_{buyer_id}")
+
+
     await database.execute(query, values)
     return order_id
 
@@ -355,11 +414,24 @@ async def delete_order(order_id: int):
 async def delete_orders_for_user(buyer_id: int):
     query = f"DELETE FROM {TABLE_NAME} WHERE buyer_id = :buyer_id"
     values = {"buyer_id": buyer_id}
+
+    cache_repository.remove_cache_entity(all_cache_key)
+    cache_repository.remove_cache_entity(f"user_order_{buyer_id}")
+    cache_repository.remove_cache_entity(f"temp_{buyer_id}")
+    ids=await get_order_id_by_user_id(buyer_id)
+    for id in ids:
+        cache_repository.remove_cache_entity(f"order_{id}")
+
     await database.execute(query, values)
 
 
 async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
-    # 1. קבלת ההזמנה הזמנית
+    temp_order_cache_key = f"temp_{buyer_id}"
+    if cache_repository.is_key_exists(temp_order_cache_key):
+        temp_dict = json.loads(cache_repository.get_cache_entity(temp_order_cache_key))
+        return OrderResponse(**temp_dict)
+
+
     query_order = """
         SELECT 
             o.id AS order_id,
@@ -382,7 +454,6 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
     if not order_row:
         return None
 
-    # 2. קבלת כל הפריטים של ההזמנה
     query_items = """
         SELECT 
             iio.id AS iio_id,
@@ -434,7 +505,7 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
         user_name=order_row["user_name"]
     )
 
-    return OrderResponse(
+    order= OrderResponse(
         id=int(order_row["order_id"]),
         order_status=order_row["order_status"],
         customer=customer_instance,
@@ -444,6 +515,10 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
         order_items=order_items,
         item_amount=total_amount
     )
+    order_json = order.model_dump_json()
+    cache_repository.create_cache_entity(temp_order_cache_key, order_json)
+
+    return order
 
 
 ## close a temp order
@@ -459,7 +534,15 @@ async def close_order(order_id: int):
         "order_date": datetime.now(),
         "order_id": order_id
     }
+
     await database.execute(query, values)
+
+    buyer_id=await get_buyer_id_by_order_id(order_id)
+    cache_repository.remove_cache_entity(all_cache_key)
+    cache_repository.remove_cache_entity(f"order_{order_id}")
+    cache_repository.remove_cache_entity(f"user_order_{buyer_id}")
+    cache_repository.remove_cache_entity(f"temp_{buyer_id}")
+
 
 async def get_closed_orders_summary_by_user(user_id: int) -> List[OrderSummary]:
     query = f"""

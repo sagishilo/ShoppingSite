@@ -3,12 +3,15 @@ import os
 import streamlit as st
 import requests
 import pandas as pd
-from openai import OpenAI
+##############from openai import OpenAI
 
 # ---------- CONFIG ----------
 st.set_page_config(page_title="ShoppingSite", page_icon="🛒", layout="wide")
 
 API_URL = "http://localhost:8000"
+
+
+
 # ---------- HEADER ----------
 def render_header():
     col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 2])
@@ -42,70 +45,14 @@ def render_header():
                 st.rerun()
 
 
-    with col5:
-        if st.session_state["user"] is not None:
-            if st.button("AI Assistant", use_container_width=True):
-                st.session_state["page"] = "chat"
-                st.rerun()
+   ########### with col5:
+        ############if st.session_state["user"] is not None:
+            ##########if st.button("AI Assistant", use_container_width=True):
+                ###########st.session_state["page"] = "chat"
+                ############st.rerun()
     st.divider()
 
 #---------------------------PAGES----------------------------------
-
-def show_ai_assistant_page():
-    # הגדרת מפתח ה-API
-    os.environ["OPENAI_API_KEY"] = "---------------------------your_key_here-------------------"
-    client = OpenAI()
-    st.title("Store Assistant 🤖")
-    user_id=st.session_state["user"]["id"]
-    content = requests.get(f"{API_URL}/gpt/content/{user_id}", timeout=5)
-
-    if "messages_buffer" not in st.session_state:
-        st.session_state.messages_buffer = [
-            {"role": "system",
-             "content": content}
-        ]
-    if "chat_counter" not in st.session_state:
-        st.session_state.chat_counter = 0
-
-    for msg in st.session_state.messages_buffer:
-        if msg["role"] != "system":
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-
-    if st.session_state.chat_counter >= 5:
-        st.error("Reached the limit of 5 prompts per session.")
-        return
-
-    if user_input := st.chat_input("Ask me about our products..."):
-
-        st.session_state.messages_buffer.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.markdown(user_input)
-
-        try:
-            with st.spinner("Assistant is typing..."):
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=st.session_state.messages_buffer,
-                    temperature=0.9,
-                    max_tokens=300
-                )
-                answer = response.choices[0].message.content
-
-            st.session_state.messages_buffer.append({"role": "assistant", "content": answer})
-            with st.chat_message("assistant"):
-                st.markdown(answer)
-
-            st.session_state.chat_counter += 1
-
-            if st.session_state.chat_counter >= 5:
-                st.rerun()
-
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-
-
 
 
 def show_user_dashboard():
@@ -972,8 +919,8 @@ elif st.session_state["page"] == "register":
     show_register_page()
 elif st.session_state["page"] == "login":
     show_login_page()
-elif st.session_state["page"]== "chat":
-    show_ai_assistant_page()
+################elif st.session_state["page"]== "chat":
+###############    show_ai_assistant_page()
 
 st.divider()
 st.caption("© 2026 ShoppingSite | כל הזכויות שמורות")

@@ -1,15 +1,22 @@
 from typing import Optional, List
+import json
 
 from model.login_request import LoginRequest
 from model.user_request import UserRequest
 from model.user_response import UserResponse
+from repository import cache_repository
 from repository.database import database
 from passlib.hash import bcrypt
-
+all_cache_key = "all_users"
 TABLE_NAME = "users"
 
 ## Returns a user by id
 async def get_by_id(user_id: int) -> Optional[UserResponse]:
+    cache_key=f"user_{user_id}"
+    if cache_repository.is_key_exists(cache_key):
+        user_dict = json.loads(cache_repository.get_cache_entity(cache_key))
+        return UserResponse(**user_dict)
+
     query = f"""
         SELECT 
             id,
@@ -25,10 +32,17 @@ async def get_by_id(user_id: int) -> Optional[UserResponse]:
     row = await database.fetch_one(query, values={"user_id": user_id})
     if row is None:
         return None
-    return UserResponse(**dict(row))
-
+    user= UserResponse(**dict(row))
+    user_json = json.dumps(user.model_dump())
+    cache_repository.create_cache_entity(cache_key, user_json)
+    return user
 
 async def get_all() -> List[UserResponse]:
+    if cache_repository.is_key_exists(all_cache_key):
+        users_dict = json.loads(cache_repository.get_cache_entity(all_cache_key))
+        return [UserResponse(**user) for user in users_dict]
+
+
     query = f"""
         SELECT 
             id AS user_id,
@@ -41,7 +55,10 @@ async def get_all() -> List[UserResponse]:
         FROM {TABLE_NAME}
     """
     result = await database.fetch_all(query)
-    return [UserResponse(**dict(row)) for row in result]
+    users= [UserResponse(**dict(row)) for row in result]
+    users_json = json.dumps([user.model_dump() for user in users])
+    cache_repository.create_cache_entity(all_cache_key, users_json)
+    return users
 
 
 async def create_user(new_user: UserRequest, hashed_password: str) -> int:
@@ -57,11 +74,14 @@ async def create_user(new_user: UserRequest, hashed_password: str) -> int:
 
     await database.execute(query, values)
     row = await database.fetch_one("SELECT LAST_INSERT_ID() AS id")
+    cache_repository.remove_cache_entity(all_cache_key)
     return row["id"]
 
 
 ## Updates an existing user
 async def update_user(user_id: int, updated_user: UserRequest, hashed_password: str) -> int:
+    cache_key=f"user_{user_id}"
+
     query = f"""
         UPDATE {TABLE_NAME}
         SET first_name = :first_name,
@@ -79,13 +99,21 @@ async def update_user(user_id: int, updated_user: UserRequest, hashed_password: 
     values = {**user_dict, "hashed_password": hashed_password, "user_id": user_id}
 
     async with database.transaction():
+        cache_repository.remove_cache_entity(all_cache_key)
+        cache_repository.remove_cache_entity(cache_key)
+
         return await database.execute(query, values)
 
 
 ## Deletes a specific user
 async def delete_user(user_id: int):
+    cache_key=f"user_{user_id}"
+
     query = f"DELETE FROM {TABLE_NAME} WHERE id = :user_id"
     await database.execute(query, {"user_id": user_id})
+
+    cache_repository.remove_cache_entity(all_cache_key)
+    cache_repository.remove_cache_entity(cache_key)
     return user_id
 
 

@@ -6,7 +6,6 @@ from service import item_service
 
 router = APIRouter(prefix="/item", tags=["item"])
 
-
 ## Returns an item by id
 ## gets -> int
 ## returns -> ItemResponse
