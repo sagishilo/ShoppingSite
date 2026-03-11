@@ -4,11 +4,8 @@ import base64
 import streamlit as st
 import requests
 import pandas as pd
-##############from openai import OpenAI
-
-
-
-
+from dotenv import load_dotenv
+from openai import OpenAI
 
 # ---------- CONFIG ----------
 st.set_page_config(page_title="ShoppingSite", page_icon="🛒", layout="wide")
@@ -76,7 +73,10 @@ def render_header():
 
     with col2:
         if st.session_state["user"]:
-            st.write(f"שלום, **{st.session_state['user']['first_name']}** 👋")
+            st.markdown(
+                f"<h3 style='text-align: center;'>שלום, <b>{st.session_state['user']['first_name']}</b> 👋</h3>",
+                unsafe_allow_html=True
+            )
         else:
             if st.button("הרשמה", use_container_width=True):
                 st.session_state["page"] = "register"
@@ -100,12 +100,12 @@ def render_header():
                 st.session_state["page"] = "dashboard"
                 st.rerun()
 
-
-   ########### with col5:
-        ############if st.session_state["user"] is not None:
-            ##########if st.button("AI Assistant", use_container_width=True):
-                ###########st.session_state["page"] = "chat"
-                ############st.rerun()
+    with col5:
+        if st.session_state["page"] != "chat":
+           if st.session_state["user"] is not None:
+                if st.button("AI Assistant", use_container_width=True):
+                    st.session_state["page"] = "chat"
+                    st.rerun()
     st.divider()
 
 #---------------------------PAGES----------------------------------
@@ -308,12 +308,77 @@ def show_order_success_page():
 
 
 
-#-------------------------------------------------------
+# --- Load environment variables ---
+load_dotenv()
+print("API Key:", os.getenv("OPENAI_API_KEY"))
 
-if st.session_state["page"] == "order_success":
-    show_order_success_page()
-if st.session_state["page"] == "dashboard":
-    show_user_dashboard()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+API_URL = "http://localhost:8000"  # שנה אם צריך
+
+def show_ai_assistant_page():
+    render_header()
+    st.title("Store Assistant 🤖")
+    user_id = st.session_state["user"]["id"]
+
+    # --- קבלת תוכן מהשרת ---
+    try:
+        response = requests.get(f"{API_URL}/gpt/content/{user_id}", timeout=15)
+        response.raise_for_status()
+        content_str = response.json().get("context", "")
+        if not isinstance(content_str, str):
+            content_str = str(content_str)
+    except Exception as e:
+        st.error(f"Failed to load assistant context: {e}")
+        return
+
+    # --- Session state ---
+    if "messages_buffer" not in st.session_state:
+        st.session_state.messages_buffer = [{"role": "system", "content": content_str}]
+    if "chat_counter" not in st.session_state:
+        st.session_state.chat_counter = 0
+
+    # --- הצגת היסטוריית הצ׳אט ---
+    for msg in st.session_state.messages_buffer:
+        if msg.get("role") != "system":
+            with st.chat_message(msg.get("role", "assistant")):
+                st.markdown(msg.get("content", ""))
+
+    if st.session_state.chat_counter >= 5:
+        st.markdown("Reached the limit of 5 prompts per session.")
+        return
+
+    # --- קלט מהמשתמש ---
+    if user_input := st.chat_input("Ask me about our products..."):
+        st.session_state.messages_buffer.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
+
+        try:
+            with st.spinner("Assistant is typing..."):
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=st.session_state.messages_buffer,
+                    temperature=0.7,
+                    max_tokens=300
+                )
+                answer = response.choices[0].message.content
+
+            # --- שמירת תשובת הבוט ב-session ---
+            st.session_state.messages_buffer.append({"role": "assistant", "content": answer})
+            with st.chat_message("assistant"):
+                st.markdown(answer)
+
+            st.session_state.chat_counter += 1
+
+            if st.session_state.chat_counter >= 5:
+                st.rerun()
+
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+
+
+
 
 # ---------- API ----------
 def get_user_favorites(user_id):
@@ -964,12 +1029,17 @@ def show_login_page():
 # ---------- ROUTER ----------
 if st.session_state["page"] == "home":
     show_home_page()
-elif st.session_state["page"] == "register":
+if st.session_state["page"] == "register":
     show_register_page()
-elif st.session_state["page"] == "login":
+if st.session_state["page"] == "login":
     show_login_page()
-################elif st.session_state["page"]== "chat":
-###############    show_ai_assistant_page()
+if st.session_state["page"] == "order_success":
+    show_order_success_page()
+if st.session_state["page"] == "dashboard":
+    show_user_dashboard()
+if st.session_state["page"] == "chat":
+    show_ai_assistant_page()
+
 
 st.divider()
-st.caption("© 2026 ShoppingSite | כל הזכויות שמורות")
+st.caption("© 2026 Smart Market | כל הזכויות שמורות")

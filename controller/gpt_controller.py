@@ -1,13 +1,13 @@
-from typing import List, Dict, Any
-
-from fastapi import HTTPException, APIRouter, Body
+from fastapi import APIRouter, HTTPException
 from service import gpt_service
 from openai import OpenAI
 import os
+from dotenv import load_dotenv
 
-router = APIRouter(prefix="/gpt", tags=["gpt"])
+load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+router = APIRouter(prefix="/gpt", tags=["gpt"])
 
 @router.get("/content/{user_id}")
 async def get_assistant_context(user_id: int):
@@ -16,4 +16,3 @@ async def get_assistant_context(user_id: int):
         return {"context": content_string}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-

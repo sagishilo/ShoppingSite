@@ -196,6 +196,9 @@ async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
     cache_repository.remove_cache_entity(f"order_{item.order_id}")
     buyer_id=await order_repository.get_buyer_id_by_order_id(item.order_id)
     cache_repository.remove_cache_entity(f"temp_{buyer_id}")
+    cache_repository.remove_cache_entity(f"orders_user_{buyer_id}")
+
+
 
     return new_iio_id
 
@@ -221,6 +224,8 @@ async def update_item_amount_in_order(item_in_order: ItemInOrderResponse, new_am
     cache_repository.remove_cache_entity(f"order_{item_in_order.order_id}")
     buyer_id = await order_repository.get_buyer_id_by_order_id(item_in_order.order_id)
     cache_repository.remove_cache_entity(f"temp_{buyer_id}")
+    cache_repository.remove_cache_entity(f"orders_user_{buyer_id}")
+
 
     return rows_updated
 
@@ -244,6 +249,8 @@ async def delete_item_in_order_by_id(item_in_order_id: int) -> Optional[int]:
     cache_repository.remove_cache_entity(f"order_{order_id}")
     buyer_id = await order_repository.get_buyer_id_by_order_id(order_id)
     cache_repository.remove_cache_entity(f"temp_{buyer_id}")
+    cache_repository.remove_cache_entity(f"orders_user_{buyer_id}")
+
 
 
 
@@ -265,6 +272,8 @@ async def order_deleted(order_id: int) -> Optional[int]:
     cache_repository.remove_cache_entity(f"order_{order_id}")
     buyer_id = await order_repository.get_buyer_id_by_order_id(order_id)
     cache_repository.remove_cache_entity(f"temp_{buyer_id}")
+    cache_repository.remove_cache_entity(f"orders_user_{buyer_id}")
+
 
     await database.execute(query=query, values=values)
 
@@ -286,6 +295,7 @@ async def item_deleted(item_id: int) -> int:
         cache_repository.remove_cache_entity(f"iio_order_{order_id}")
         cache_repository.remove_cache_entity(f"order_{order_id}")
         cache_repository.remove_cache_entity(f"temp_{buyer_id}")
+        cache_repository.remove_cache_entity(f"orders_user_{buyer_id}")
 
     return await database.execute(query, {"item_id": item_id})
 

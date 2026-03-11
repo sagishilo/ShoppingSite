@@ -332,8 +332,8 @@ async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
                 item_amount=total_amount
             )
         )
-        orders_json = json.dumps([order.model_dump() for order in all_orders])
-        cache_repository.create_cache_entity(users_order_cache_key, orders_json)
+    orders_json = json.dumps([order.model_dump() for order in all_orders],default=str)
+    cache_repository.create_cache_entity(users_order_cache_key, orders_json)
 
     return all_orders
 
