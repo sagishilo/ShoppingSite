@@ -104,8 +104,9 @@ async def unfav_item(fav: FavoriteItemRequest):
              "item_id":fav.item_id}
     await database.execute(query, values)
     cache_repository.remove_cache_entity(cache_key)
-
     return fav.id
+
+
 
 async def unfav_items_for_user(user_id: int):
     cache_key = f"fav_items_{user_id}"

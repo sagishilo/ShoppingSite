@@ -3,7 +3,7 @@ from typing import Optional
 from model.item_in_order import ItemInOrder
 from model.item_in_order_response import ItemInOrderResponse
 from model.item_response import ItemResponse
-from repository import cache_repository
+from repository import cache_repository, order_repository
 from repository.database import database
 
 TABLE_NAME = "item_in_order"
@@ -111,8 +111,16 @@ async def get_all_item_ids_by_order(order_id: int):
     return rows
 
 
-async def get_all_iio_ids_and_order_ids_by_item_id(item_id: int):
-    query = f"SELECT id ,order_id FROM {TABLE_NAME} WHERE item_id = :item_id"
+async def get_iio_ids_order_ids_buyer_ids_by_item_id(item_id: int):
+    query = f"""
+    SELECT 
+        iio.id, 
+        iio.order_id, 
+        o.buyer_id 
+    FROM {TABLE_NAME} iio
+    JOIN `orders` o ON iio.order_id = o.id
+    WHERE iio.item_id = :item_id
+    """
     rows = await database.fetch_all(query, {"item_id": item_id})
     return rows
 
@@ -124,7 +132,6 @@ async def get_all_by_order_id(order_id: int):
     if cache_repository.is_key_exists(cache_key):
         iio_dict = json.loads(cache_repository.get_cache_entity(cache_key))
         return [ItemInOrderResponse(**item) for item in iio_dict]
-
 
 
     query = f"""
@@ -165,8 +172,8 @@ async def get_all_by_order_id(order_id: int):
         )
         formatted_results.append(iio_obj)
 
-        items_json = json.dumps([iio.model_dump() for iio in formatted_results])
-        cache_repository.create_cache_entity(cache_key, items_json)
+    items_json = json.dumps([iio.model_dump() for iio in formatted_results])
+    cache_repository.create_cache_entity(cache_key, items_json)
 
     return formatted_results
 
@@ -184,7 +191,11 @@ async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
         "amount_in_order": item.amount_in_order
     }
     new_iio_id = await database.execute(query=query, values=values)
+
     cache_repository.remove_cache_entity(cache_key)
+    cache_repository.remove_cache_entity(f"order_{item.order_id}")
+    buyer_id=await order_repository.get_buyer_id_by_order_id(item.order_id)
+    cache_repository.remove_cache_entity(f"temp_{buyer_id}")
 
     return new_iio_id
 
@@ -207,6 +218,9 @@ async def update_item_amount_in_order(item_in_order: ItemInOrderResponse, new_am
     rows_updated = await database.execute(query=query, values=values)
     cache_repository.remove_cache_entity(cache_key_iio)
     cache_repository.remove_cache_entity(cache_key_order)
+    cache_repository.remove_cache_entity(f"order_{item_in_order.order_id}")
+    buyer_id = await order_repository.get_buyer_id_by_order_id(item_in_order.order_id)
+    cache_repository.remove_cache_entity(f"temp_{buyer_id}")
 
     return rows_updated
 
@@ -217,18 +231,21 @@ async def delete_item_in_order_by_id(item_in_order_id: int) -> Optional[int]:
     order_id=await get_order_id_by_iio_id(item_in_order_id)
     cache_key_order=f"iio_order_{order_id}"
 
-
     query = f"""
     DELETE FROM {TABLE_NAME}
     WHERE id = :item_in_order_id;
     """
     values = {"item_in_order_id": item_in_order_id}
 
+    await database.execute(query=query, values=values)
+
     cache_repository.remove_cache_entity(cache_key_iio)
     cache_repository.remove_cache_entity(cache_key_order)
+    cache_repository.remove_cache_entity(f"order_{order_id}")
+    buyer_id = await order_repository.get_buyer_id_by_order_id(order_id)
+    cache_repository.remove_cache_entity(f"temp_{buyer_id}")
 
-    rows_deleted = await database.execute(query=query, values=values)
-    return rows_deleted
+
 
 
 
@@ -245,6 +262,9 @@ async def order_deleted(order_id: int) -> Optional[int]:
     for item in items:
         cache_repository.remove_cache_entity(f"iio_{item.id}")
     cache_repository.remove_cache_entity(cache_key_order)
+    cache_repository.remove_cache_entity(f"order_{order_id}")
+    buyer_id = await order_repository.get_buyer_id_by_order_id(order_id)
+    cache_repository.remove_cache_entity(f"temp_{buyer_id}")
 
     await database.execute(query=query, values=values)
 
@@ -257,12 +277,15 @@ async def item_deleted(item_id: int) -> int:
     WHERE item_id = :item_id;
     """
 
-    rows=await get_all_iio_ids_and_order_ids_by_item_id(item_id)
+    rows=await get_iio_ids_order_ids_buyer_ids_by_item_id(item_id)
     for row in rows:
         iio_id=row["id"]
         order_id = row["order_id"]
+        buyer_id = row["buyer_id"]
         cache_repository.remove_cache_entity(f"iio_{iio_id}")
         cache_repository.remove_cache_entity(f"iio_order_{order_id}")
+        cache_repository.remove_cache_entity(f"order_{order_id}")
+        cache_repository.remove_cache_entity(f"temp_{buyer_id}")
 
     return await database.execute(query, {"item_id": item_id})
 

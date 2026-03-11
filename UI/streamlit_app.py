@@ -1,9 +1,14 @@
 import datetime
 import os
+import base64
 import streamlit as st
 import requests
 import pandas as pd
 ##############from openai import OpenAI
+
+
+
+
 
 # ---------- CONFIG ----------
 st.set_page_config(page_title="ShoppingSite", page_icon="🛒", layout="wide")
@@ -12,13 +17,63 @@ API_URL = "http://localhost:8000"
 
 
 
+# ---------- SESSION STATE ----------
+
+if "page" not in st.session_state:
+    st.session_state["page"] = "home"
+if "user" not in st.session_state:
+    st.session_state["user"] = None
+if "cart" not in st.session_state:
+    st.session_state["cart"] = []
+if "temp_order_id" not in st.session_state:
+    st.session_state["temp_order_id"] = None
+
+# ----------------------query params-------------------
+
+saved_id = st.query_params.get("user_id")
+
+if saved_id and st.session_state["user"] is None:
+    try:
+        res = requests.get(f"{API_URL}/user/{saved_id}")
+        if res.status_code == 200:
+            st.session_state["user"] = res.json()
+    except Exception:
+        pass
 # ---------- HEADER ----------
 def render_header():
     col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 2])
-    with col1:
-        if st.button("## 🛒 ShoppingSite", help="חזרה לדף הבית"):
+
+
+    def get_base64_of_bin_file(bin_file):
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    img_path = "photos/logo.jpeg"
+    try:
+        img_base64 = get_base64_of_bin_file(img_path)
+        user = st.session_state.get("user")
+        user_id = user["id"] if user else ""
+
+        html_code = f'''
+        <a href="?page=home&user_id={user_id}" target="_self">
+            <img src="data:image/png;base64,{img_base64}" width="250" style="cursor:pointer; border-radius: 10px;">
+        </a>
+        '''
+        with col1:
+            st.markdown(html_code, unsafe_allow_html=True)
+
+        if st.query_params.get("page") == "home":
             st.session_state["page"] = "home"
+            st.query_params.pop("page", None)
             st.rerun()
+
+    except FileNotFoundError:
+        with col1:
+            if st.button("🛒 Smart Basket"):
+                st.session_state["page"] = "home"
+                st.rerun()
+
+
     with col2:
         if st.session_state["user"]:
             st.write(f"שלום, **{st.session_state['user']['first_name']}** 👋")
@@ -27,17 +82,18 @@ def render_header():
                 st.session_state["page"] = "register"
                 st.rerun()
     with col3:
-        if st.session_state["user"] is None:
+        if st.session_state["user"] is None and st.session_state["page"] != "login":
             if st.button("התחברות", use_container_width=True, type="primary"):
                 st.session_state["page"] = "login"
                 st.rerun()
 
         else:
-            if st.button("התנתק", use_container_width=True):
-                st.session_state["user"] = None
-                st.session_state["cart"] = []
-                st.session_state["page"] = "home"
-                st.rerun()
+            if st.session_state["user"] is not None:
+                if st.button("התנתק", use_container_width=True):
+                    st.session_state.clear()
+                    st.query_params.clear()
+                    #st.session_state["page"] = "home"
+                    st.rerun()
     with col4:
         if st.session_state.get("user") and st.session_state["page"] != "dashboard" :
             if st.button("👤 אזור אישי", use_container_width=True):
@@ -160,14 +216,15 @@ def show_user_dashboard():
 
                 # הצגת DataFrame
                 for index, row in df.iterrows():
-                    cols = st.columns([2,1,1,1,1])
+                    cols = st.columns([0.5,0.5,0.5,0.5])
                     with cols[0]:
                         st.image(row["תמונה"], width=60)
-                        st.markdown(f"**{row['שם מוצר']}**")
                     with cols[1]:
-                        st.markdown(f"💰 {row['מחיר (₪)']}")
+                        st.markdown(f"**{row['שם מוצר']}**")
                     with cols[2]:
-                        st.markdown(f" left in stock {row['מלאי']}")
+                        st.markdown(f"💰 {row['מחיר (₪)']}")
+                    #with cols[2]:
+                        #st.markdown(f" left in stock {row['מלאי']}")
                     with cols[3]:
                         # Checkbox למעקב מועדפים
                         st.checkbox(
@@ -231,7 +288,7 @@ def show_order_success_page():
     st.balloons()
     st.container()
     st.success("🎊 ההזמנה שלך בוצעה בהצלחה!")
-    st.write("תודה שקנית ב-ShoppingSite. נשמח לראות אותך שוב בקרוב.")
+    st.write("תודה שקנית ב-Smart Basket. נשמח לראות אותך שוב בקרוב.")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -250,16 +307,9 @@ def show_order_success_page():
             st.rerun()
 
 
-# ---------- SESSION STATE ----------
 
-if "page" not in st.session_state:
-    st.session_state["page"] = "home"
-if "user" not in st.session_state:
-    st.session_state["user"] = None
-if "cart" not in st.session_state:
-    st.session_state["cart"] = []
-if "temp_order_id" not in st.session_state:
-    st.session_state["temp_order_id"] = None
+#-------------------------------------------------------
+
 if st.session_state["page"] == "order_success":
     show_order_success_page()
 if st.session_state["page"] == "dashboard":
@@ -268,7 +318,7 @@ if st.session_state["page"] == "dashboard":
 # ---------- API ----------
 def get_user_favorites(user_id):
     try:
-        res = requests.get(f"{API_URL}/fav-item/{int(user_id)}", timeout=5)
+        res = requests.get(f"{API_URL}/fav-item/{user_id}", timeout=5)
         if res.status_code == 200:
             data = res.json()
             # מחלצים רק את ה-ID והופכים אותו למספר שלם
@@ -336,7 +386,9 @@ def load_temp_cart():
         else:
             st.session_state["temp_order_id"] = None
             st.session_state["cart"] = []
-    except:
+
+    except Exception as e:
+        st.error(f"Error loading cart: {e}")
         st.session_state["temp_order_id"] = None
         st.session_state["cart"] = []
 
@@ -573,11 +625,10 @@ def show_home_page():
         st.session_state["search_input_val"] = ""
     if "favorites" not in st.session_state:
         st.session_state["favorites"] = []
-    if "favorites_loaded" not in st.session_state and st.session_state["user"]:
+    if st.session_state.get("user"):
         user_id = int(st.session_state["user"]["id"])
-        st.session_state["favorites"] = get_user_favorites(user_id)
-        st.session_state["favorites_loaded"] = True
-
+        fav_data = get_user_favorites(user_id)
+        st.session_state["favorites"] = fav_data
 
     # ---------- סנכרון עגלה ----------
     if "cart_loaded" not in st.session_state and st.session_state["user"]:
@@ -587,10 +638,6 @@ def show_home_page():
         # ---------- סנכרון שורות חיפוש ----------
     search_keys = ["search_name_input", "stock_val", "price_val", "stock_op", "price_op"]
 
-    # 1. הגדרת המפתחות
-    search_keys = ["search_name_input", "stock_op", "stock_val", "price_op", "price_val"]
-
-    # 2. פונקציית ה-Callback לניקוי (תרוץ לפני רינדור הווידג'טים)
     def reset_filters():
         for key in search_keys:
             st.session_state[key] = ""
@@ -658,7 +705,7 @@ def show_home_page():
                 # שם, מחיר וכמות במלאי
                 st.markdown(f"**{product['item_name']}**")
                 st.markdown(f"💰 {product['price']} ₪")
-                st.markdown(f" {product['amount_in_stock']} left in stock")
+                #st.markdown(f" {product['amount_in_stock']} left in stock")
 
                 # כפתורי פעולה
                 col_btn, col_fav = st.columns([3,1])
@@ -790,6 +837,7 @@ def show_home_page():
                         st.caption(f"מחיר יחידה: ₪{price} | סה\"כ: **₪{item_total}**")
 
                 st.divider()
+                st.markdown(f"### 💰 סה\"כ לתשלום: **₪{total_sum}**")
                 st.write(f"📍 **כתובת משלוח:** {st.session_state.get('user', {}).get('address', 'לא צוינה')}")
                 if st.button("🚀 לתשלום וסגירת הזמנה", use_container_width=True, type="primary"):
                     finalize_checkout()
@@ -894,6 +942,7 @@ def show_login_page():
                 user_data = res.json()
                 st.session_state["user"] = user_data
                 st.session_state["page"] = "home"
+                st.query_params["user_id"] = user_data.get("id")
                 st.rerun()
             else:
                 # הדפסת הדיבג שתעזור לנו אם זה עדיין נכשל

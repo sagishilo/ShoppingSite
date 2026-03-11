@@ -542,6 +542,8 @@ async def close_order(order_id: int):
     cache_repository.remove_cache_entity(f"order_{order_id}")
     cache_repository.remove_cache_entity(f"user_order_{buyer_id}")
     cache_repository.remove_cache_entity(f"temp_{buyer_id}")
+    cache_repository.remove_cache_entity("all_items")
+
 
 
 async def get_closed_orders_summary_by_user(user_id: int) -> List[OrderSummary]:
