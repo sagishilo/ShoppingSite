@@ -29,24 +29,31 @@ async def get_assistant_context(user_id: int):
     for o in orders:
         try:
             line = (
-                f"- Order ID: {str(o.id)}, Status: {str(o.order_status)}, "
-                f"Total: {str(o.total_price)}, Item amount: {str(o.item_amount)}, "
-                f"Address: {str(o.order_address)}, Date: {str(o.order_date)}\n"
+                f"- Order ID: {o.id}, Status: {o.order_status}, "
+                f"Total: {o.total_price}, Item amount: {o.item_amount}, "
+                f"Address: {o.order_address}, Date: {o.order_date}\n"
             )
+            for iio in o.order_items or []:
+                iio_str=f"Item name: {iio.item.item_name}, Amount in order: {iio.amount_in_order}\n"
+                line+=iio_str
             order_info += line
         except Exception as e:
             print(f"[ERROR] Failed order line: {o} | {e}")
 
     try:
         full_context = (
-            "You are a helpful store assistant. Use ONLY the information below:\n\n"
-            f"{product_info}\n{order_info}\n"
-            "Rules:\n- If asked about a product not listed, say we don't have it.\n"
-            "- If asked about orders, use the user history.\n- Be concise and polite."
+            "You are a helpful store assistant. Use the information below:\n\n"
+            f"{product_info}\n"
+            f"{order_info}\n"
+            "Rules:\n- "
+            "If asked about a product not listed, say we don't have it.\n"
+            "If asked about orders, use the user history.\n"
+            "If asked information about a product listed, answer shortly.\n"
+            "Temp order is an open order.\n"
+            "Be concise and polite."
         )
     except Exception as e:
         print(f"[ERROR] Failed to build full context: {e}")
         full_context = "No context available due to internal error."
 
-    print("[INFO] Returning context successfully")
     return {"context": full_context}

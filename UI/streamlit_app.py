@@ -177,6 +177,7 @@ def show_user_dashboard():
     except Exception as e:
         st.error(f"שגיאה בתקשורת: {e}")
 
+    st.divider()
 
     st.subheader("המועדפים שלי❤️")
 
@@ -244,7 +245,7 @@ def show_user_dashboard():
     st.divider()
     st.subheader("⚙️ ניהול חשבון")
 
-    with st.expander("🔴 אזור מסוכן: מחיקת חשבון לצמיתות"):
+    with st.expander("🔴 מחיקת חשבון לצמיתות"):
         st.warning("""
                 שים לב: מחיקת החשבון היא פעולה בלתי הפיכה. 
                 כל המידע שלך יימחק לצמיתות מהמערכת, כולל:
@@ -525,7 +526,6 @@ def update_ui_cart(iio):
 def filter_products_advanced(products, name_query="", stock_op="", stock_val="", price_op="", price_val=""):
     filtered = []
 
-    # המרת ערכים למספרים אם אפשר
     try:
         stock_val_num = int(stock_val) if stock_val else None
     except:
@@ -541,7 +541,7 @@ def filter_products_advanced(products, name_query="", stock_op="", stock_val="",
 
     for p in products:
         # חיפוש בשם
-        name_ok = all(word in p["item_name"].lower() for word in name_words)
+        name_ok = any(word in p["item_name"].lower() for word in name_words) if name_words else True
 
         # חיפוש במלאי
         stock_ok = True
