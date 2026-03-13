@@ -66,9 +66,7 @@ async def update_item_amount(item_in_order_id: int, new_amount_in_order: int):
 @router.delete("/{item_in_order_id}")
 async def delete_item_in_order(item_in_order_id: int):
     try:
-        result = await item_in_order_service.delete_item_in_order_by_id(item_in_order_id)
-        if not result:
-            raise HTTPException(status_code=404, detail="Item in order not found")
+        await item_in_order_service.delete_item_in_order_by_id(item_in_order_id)
         return "Delete succeeded"
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

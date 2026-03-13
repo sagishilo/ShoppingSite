@@ -11,11 +11,6 @@ TABLE_NAME = "item_in_order"
 
 ##Returns a specific item-in-order by its id
 async def get_by_id(item_in_order_id: int):
-    cache_key=f"iio_{item_in_order_id}"
-
-    if cache_repository.is_key_exists(cache_key):
-        iio_dict = json.loads(cache_repository.get_cache_entity(cache_key))
-        return ItemInOrderResponse(**iio_dict)
 
     query = f"""
         SELECT 
@@ -54,8 +49,6 @@ async def get_by_id(item_in_order_id: int):
         amount_in_order=int(data["amount_in_order"]),
         total_price=float(data["total_price"])
     )
-    iio_json = json.dumps(iio.model_dump())
-    cache_repository.create_cache_entity(cache_key, iio_json)
 
     return iio
 
@@ -204,6 +197,7 @@ async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
     }
     new_iio_id = await database.execute(query=query, values=values)
 
+
     cache_repository.remove_cache_entity(cache_key)
     cache_repository.remove_cache_entity(f"order_{item.order_id}")
     buyer_id=await order_repository.get_buyer_id_by_order_id(item.order_id)
@@ -217,7 +211,6 @@ async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
 
 ##Updates the amount of a specific item in an order
 async def update_item_amount_in_order(item_in_order: ItemInOrderResponse, new_amount_in_order: int) -> Optional[int]:
-    cache_key_iio=f"iio_{item_in_order.id}"
     cache_key_order=f"iio_order_{item_in_order.order_id}"
 
 
@@ -231,7 +224,6 @@ async def update_item_amount_in_order(item_in_order: ItemInOrderResponse, new_am
         "item_in_order_id": item_in_order.id
     }
     rows_updated = await database.execute(query=query, values=values)
-    cache_repository.remove_cache_entity(cache_key_iio)
     cache_repository.remove_cache_entity(cache_key_order)
     cache_repository.remove_cache_entity(f"order_{item_in_order.order_id}")
     buyer_id = await order_repository.get_buyer_id_by_order_id(item_in_order.order_id)
@@ -244,9 +236,8 @@ async def update_item_amount_in_order(item_in_order: ItemInOrderResponse, new_am
 
 ##Deletes a specific item-in-order by its id
 async def delete_item_in_order_by_id(item_in_order_id: int) -> Optional[int]:
-    cache_key_iio=f"iio_{item_in_order_id}"
     order_id=await get_order_id_by_iio_id(item_in_order_id)
-    cache_key_order=f"iio_order_{order_id}"
+    buyer_id = await order_repository.get_buyer_id_by_order_id(order_id)
 
     query = f"""
     DELETE FROM {TABLE_NAME}
@@ -256,10 +247,8 @@ async def delete_item_in_order_by_id(item_in_order_id: int) -> Optional[int]:
 
     await database.execute(query=query, values=values)
 
-    cache_repository.remove_cache_entity(cache_key_iio)
-    cache_repository.remove_cache_entity(cache_key_order)
+    cache_repository.remove_cache_entity(f"iio_order_{order_id}")
     cache_repository.remove_cache_entity(f"order_{order_id}")
-    buyer_id = await order_repository.get_buyer_id_by_order_id(order_id)
     cache_repository.remove_cache_entity(f"temp_{buyer_id}")
     cache_repository.remove_cache_entity(f"orders_user_{buyer_id}")
 
@@ -277,9 +266,6 @@ async def order_deleted(order_id: int) -> Optional[int]:
     """
     values = {"order_id": order_id}
 
-    items = await get_all_by_order_id(order_id)
-    for item in items:
-        cache_repository.remove_cache_entity(f"iio_{item.id}")
     cache_repository.remove_cache_entity(cache_key_order)
     cache_repository.remove_cache_entity(f"order_{order_id}")
     buyer_id = await order_repository.get_buyer_id_by_order_id(order_id)
@@ -298,10 +284,8 @@ async def item_deleted(item_id: int) -> int:
     """
     rows=await get_iio_ids_order_ids_buyer_ids_by_item_id(item_id)
     for row in rows:
-        iio_id=row["id"]
         order_id = row["order_id"]
         buyer_id = row["buyer_id"]
-        cache_repository.remove_cache_entity(f"iio_{iio_id}")
         cache_repository.remove_cache_entity(f"iio_order_{order_id}")
         cache_repository.remove_cache_entity(f"order_{order_id}")
         cache_repository.remove_cache_entity(f"temp_{buyer_id}")

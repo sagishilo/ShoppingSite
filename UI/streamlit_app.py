@@ -7,14 +7,14 @@ import pandas as pd
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# ---------- CONFIG ----------
+# ------------------------- CONFIG ---------------------------
+
 st.set_page_config(page_title="ShoppingSite", page_icon="🛒", layout="wide")
 
 API_URL = "http://localhost:8000"
 
+# ------------------- SESSION STATE ----------------------
 
-
-# ---------- SESSION STATE ----------
 
 if "page" not in st.session_state:
     st.session_state["page"] = "home"
@@ -25,7 +25,9 @@ if "cart" not in st.session_state:
 if "temp_order_id" not in st.session_state:
     st.session_state["temp_order_id"] = None
 
-# ----------------------query params-------------------
+
+# ---------------------- QUERY PARAMS ------------------------
+
 
 saved_id = st.query_params.get("user_id")
 
@@ -36,7 +38,9 @@ if saved_id and st.session_state["user"] is None:
             st.session_state["user"] = res.json()
     except Exception:
         pass
-# ---------- HEADER ----------
+# -------------------------- HEADER ----------------------------
+
+
 def render_header():
     col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 2])
 
@@ -70,11 +74,10 @@ def render_header():
                 st.session_state["page"] = "home"
                 st.rerun()
 
-
     with col2:
         if st.session_state["user"]:
             st.markdown(
-                f"<h3 style='text-align: center;'>שלום, <b>{st.session_state['user']['first_name']}</b> 👋</h3>",
+                f"<h3 style='text-align: center;'>שלום, <b>{st.session_state['user']['first_name']}</b></h3>",
                 unsafe_allow_html=True
             )
         else:
@@ -108,7 +111,10 @@ def render_header():
                     st.rerun()
     st.divider()
 
-#---------------------------PAGES----------------------------------
+
+#----------------------------------------------------PAGES------------------------------------------------
+
+#------------------------------------- USER PAGE ------------------------------------
 
 
 def show_user_dashboard():
@@ -123,7 +129,8 @@ def show_user_dashboard():
         st.title("אזור אישי 👤",  )
 
     st.divider()
-    # --------------------- הזמנות סגורות ---------------------
+
+# ------------------ CLOSE ORDERS ------------------
     st.subheader("הזמנות סגורות 📦")
 
     try:
@@ -179,9 +186,8 @@ def show_user_dashboard():
 
     st.divider()
 
-    st.subheader("המועדפים שלי❤️")
 
-    # ---- callback למועדפים ----
+    # ------- favorite callback  -------
     def toggle_fav_callback(item_id, user_id):
         favorites = st.session_state.get("favorites", [])
         is_fav = item_id in favorites
@@ -192,7 +198,9 @@ def show_user_dashboard():
             else:
                 st.session_state["favorites"] = favorites + [item_id]
 
-    # ---- מוצרים מועדפים ----
+# ------------------------------ FAVORITES ----------------------------
+    st.subheader("המועדפים שלי❤️")
+
     try:
         res_fav = requests.get(f"{API_URL}/fav-item/{user_id}", timeout=5)
         if res_fav.status_code == 200:
@@ -240,9 +248,10 @@ def show_user_dashboard():
             st.toast(f"שגיאה בטעינת המוצרים המועדפים: {res_fav.text}")
     except Exception as e:
         st.toast(f"שגיאה בתקשורת: {e}")
-
-    ##----------------מחיקת משתמש-------------------
     st.divider()
+
+    #------------------ USER DELETE ----------------------
+
     st.subheader("⚙️ ניהול חשבון")
 
     with st.expander("🔴 מחיקת חשבון לצמיתות"):
@@ -270,7 +279,6 @@ def show_user_dashboard():
                     # ניקוי ה-Session State כדי לנתק את המשתמש
                     st.session_state.clear()
 
-                    # השהייה קלה כדי שהמשתמש יראה את הודעת ההצלחה
                     import time
                     time.sleep(1)
 
@@ -283,13 +291,13 @@ def show_user_dashboard():
                 st.error(f"שגיאה בתקשורת עם השרת: {e}")
 
 
-
+#--------------------------------------------- ORDER SUCCESS PAGE -----------------------------------------
 def show_order_success_page():
     render_header()
     st.balloons()
     st.container()
     st.success("🎊 ההזמנה שלך בוצעה בהצלחה!")
-    st.write("תודה שקנית ב-Smart Basket. נשמח לראות אותך שוב בקרוב.")
+    st.write("נשמח לראות אותך שוב בקרוב.")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -309,19 +317,18 @@ def show_order_success_page():
 
 
 
-# --- Load environment variables ---
+#--------------------------------------------- CHAT PAGE -----------------------------------------
 load_dotenv()
 print("API Key:", os.getenv("OPENAI_API_KEY"))
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-API_URL = "http://localhost:8000"  # שנה אם צריך
+API_URL = "http://localhost:8000"
 
 def show_ai_assistant_page():
     render_header()
     st.title("Store Assistant 🤖")
     user_id = st.session_state["user"]["id"]
 
-    # --- קבלת תוכן מהשרת ---
     try:
         response = requests.get(f"{API_URL}/gpt/content/{user_id}", timeout=15)
         response.raise_for_status()
@@ -332,13 +339,11 @@ def show_ai_assistant_page():
         st.error(f"Failed to load assistant context: {e}")
         return
 
-    # --- Session state ---
     if "messages_buffer" not in st.session_state:
         st.session_state.messages_buffer = [{"role": "system", "content": content_str}]
     if "chat_counter" not in st.session_state:
         st.session_state.chat_counter = 0
 
-    # --- הצגת היסטוריית הצ׳אט ---
     for msg in st.session_state.messages_buffer:
         if msg.get("role") != "system":
             with st.chat_message(msg.get("role", "assistant")):
@@ -348,7 +353,8 @@ def show_ai_assistant_page():
         st.markdown("Reached the limit of 5 prompts per session.")
         return
 
-    # --- קלט מהמשתמש ---
+
+    # ------ user input -------
     if user_input := st.chat_input("Ask me about our products..."):
         st.session_state.messages_buffer.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
@@ -364,7 +370,7 @@ def show_ai_assistant_page():
                 )
                 answer = response.choices[0].message.content
 
-            # --- שמירת תשובת הבוט ב-session ---
+            # --- saving answers in session ---
             st.session_state.messages_buffer.append({"role": "assistant", "content": answer})
             with st.chat_message("assistant"):
                 st.markdown(answer)
@@ -381,7 +387,11 @@ def show_ai_assistant_page():
 
 
 
-# ---------- API ----------
+# ----------------------------------------- API CALLS --------------------------------------------------
+
+## Fetches favorite items for a user
+## Returns list of item IDs, handles request errors
+
 def get_user_favorites(user_id):
     try:
         res = requests.get(f"{API_URL}/fav-item/{user_id}", timeout=5)
@@ -394,6 +404,10 @@ def get_user_favorites(user_id):
     return []
 
 
+
+## Fetches favorite items for a user
+## Returns list of item IDs, handles request errors
+
 def update_cart_item(iio_id, idx, new_amount):
     if new_amount < 1:
         return
@@ -403,22 +417,31 @@ def update_cart_item(iio_id, idx, new_amount):
         st.session_state["cart"][idx]["amount_in_order"] = new_amount
         st.rerun()
 
+
+
+
+## Deletes an item from cart
+## Sends DELETE request, updates session_state
+
 def delete_cart_item(iio_id, idx):
     response = requests.delete(f"{API_URL}/item-in-order/{iio_id}")
     if response.status_code == 200:
         st.session_state["cart"].pop(idx)
         st.rerun()
 
+
+
+
+## Toggles an item as favorite for a user
+## Sends POST or DELETE request depending on current state, handles validation errors
+
 def toggle_favorite(user_id, item_id, is_favorite):
-    # נתיב בסיסי
     base_url = f"{API_URL.strip('/')}/fav-item"
 
-    # הכנת ה-Payload - וודא שהשמות תואמים ל-FastAPI
     payload = {
         "user_id": int(user_id),
         "item_id": int(item_id)
     }
-
     try:
         if is_favorite:
             res = requests.delete(f"{base_url}/remove/fav", json=payload, timeout=5)
@@ -435,6 +458,9 @@ def toggle_favorite(user_id, item_id, is_favorite):
         return False
 
 
+
+## Loads temporary cart for a user
+## Fetches temp order and its items, initializes session_state, handles errors
 
 def load_temp_cart():
     try:
@@ -459,6 +485,11 @@ def load_temp_cart():
         st.session_state["cart"] = []
 
 
+
+
+## Adds a product to cart
+## Checks user login, creates temp order if needed, POSTs item, updates session_state
+
 def add_to_cart(product):
     if not st.session_state.get("user"):
         show_login_dialog()
@@ -481,6 +512,8 @@ def add_to_cart(product):
 
 
 
+## Increases item amount in cart
+## Checks against max_stock, updates item via PUT, updates session_state, shows toast
 
 def increase_cart_amount(product, in_cart, max_stock):
     new_amount = in_cart["amount_in_order"] + 1
@@ -513,6 +546,11 @@ def increase_cart_amount(product, in_cart, max_stock):
         st.toast(f"❌ שגיאה: {res.text}")
 
 
+
+
+## Initializes cart UI keys for an item
+## Sets temp and original amounts in session_state
+
 def update_ui_cart(iio):
     iio_id = iio.get("id")
     new_amount = iio.get("amount_in_order", 1)
@@ -523,27 +561,27 @@ def update_ui_cart(iio):
     st.session_state[orig_key] = new_amount
 
 
+
+
+## Filters products by name, stock, and price
+## Returns filtered list based on provided conditions
+
 def filter_products_advanced(products, name_query="", stock_op="", stock_val="", price_op="", price_val=""):
     filtered = []
-
     try:
         stock_val_num = int(stock_val) if stock_val else None
     except:
         stock_val_num = None
-
     try:
         price_val_num = float(price_val) if price_val else None
     except:
         price_val_num = None
 
-    # פיצול מילים לחיפוש בשם
     name_words = name_query.lower().split() if name_query else []
 
     for p in products:
-        # חיפוש בשם
         name_ok = any(word in p["item_name"].lower() for word in name_words) if name_words else True
 
-        # חיפוש במלאי
         stock_ok = True
         if stock_op and stock_val_num is not None:
             if stock_op == "מעל":
@@ -553,7 +591,6 @@ def filter_products_advanced(products, name_query="", stock_op="", stock_val="",
             elif stock_op == "כמות מדוייקת":
                 stock_ok = p.get("amount_in_stock",0) == stock_val_num
 
-        # חיפוש במחיר
         price_ok = True
         if price_op and price_val_num is not None:
             if price_op == "מעל":
@@ -570,7 +607,9 @@ def filter_products_advanced(products, name_query="", stock_op="", stock_val="",
 
 
 
-# פונקציית עזר לטעינת עגלה מהשרת (סטטוס TEMP)
+## Syncs cart from database for temp order
+## Fetches items via GET request, updates session_state, handles errors
+
 def sync_cart_from_db():
 
     order_id = st.session_state.get("temp_order_id")
@@ -594,6 +633,8 @@ def sync_cart_from_db():
 
 
 
+## Creates a new temp order for logged-in user
+## Checks user, prepares payload, POSTs order, updates session_state
 
 def new_order():
     user = st.session_state.get("user")
@@ -602,10 +643,7 @@ def new_order():
         return
     user_id = user["id"]
     try:
-        # 1. הגדרת הכתובת בצורה נקייה
         clean_url = f"{API_URL.strip('/')}/order/"
-
-        # 2. יצירת ה-JSON (Payload)
         payload = {
             "buyer_id": int(user_id),
             "order_date": datetime.datetime.now().isoformat(),
@@ -613,7 +651,6 @@ def new_order():
             "order_status": "temp"
 
         }
-        # 3. שליחת הבקשה עם Header שמצהיר על JSON
         res = requests.post(
             clean_url,
             json=payload,
@@ -622,8 +659,7 @@ def new_order():
         )
 
         if res.status_code in (200, 201):
-            order_id = res.json()  # אם ה־API מחזיר את ה-ID
-            ##st.success(f"הזמנה חדשה נוצרה! מספר הזמנה: {order_id}")
+            order_id = res.json()
             st.session_state["temp_order_id"] = order_id
             return order_id
         else:
@@ -635,6 +671,11 @@ def new_order():
     except Exception as e:
         st.toast(f"❌ תקלה בתקשורת: {e}")
 
+
+
+
+## Finalizes checkout
+## Checks temp order exists, PUT request to close order, clears session_state, updates page
 
 def finalize_checkout():
     order_id = st.session_state.get("temp_order_id")
@@ -676,16 +717,15 @@ def show_login_dialog():
 
 
 
-# ---------- PAGES ----------
+# ---------------------------------------------------  HOME PAGE ------------------------------------------
 
 def clear_search():
     st.session_state["search_input_val"] = ""
 
-
 def show_home_page():
     render_header()
 
-    # ---------- אתחול session_state ----------
+    # ---------- session_state restart ----------
     if "search_input_val" not in st.session_state:
         st.session_state["search_input_val"] = ""
     if "favorites" not in st.session_state:
@@ -695,12 +735,12 @@ def show_home_page():
         fav_data = get_user_favorites(user_id)
         st.session_state["favorites"] = fav_data
 
-    # ---------- סנכרון עגלה ----------
+    # ---------------- cart sync ----------------
     if "cart_loaded" not in st.session_state and st.session_state["user"]:
         sync_cart_from_db()
         st.session_state["cart_loaded"] = True
 
-        # ---------- סנכרון שורות חיפוש ----------
+    # --------------- search bar sync --------------
     search_keys = ["search_name_input", "stock_val", "price_val", "stock_op", "price_op"]
 
     def reset_filters():
@@ -732,7 +772,6 @@ def show_home_page():
             # בתוך טופס, כפתור ניקוי רגיל עדיין יעבוד עם ה-callback
             st.form_submit_button("🗑️ נקה", on_click=reset_filters, use_container_width=True)
 
-    # --- טעינה וסינון ---
     try:
         response = requests.get(f"{API_URL}/item/", timeout=5)
         response.raise_for_status()
@@ -741,7 +780,6 @@ def show_home_page():
         st.error("❌ שגיאה בתקשורת עם השרת")
         return
 
-    # סינון התוצאות
     products = filter_products_advanced(
         all_products,
         name_query=product_name_query,
@@ -751,13 +789,12 @@ def show_home_page():
         price_val=price_val
     )
 
-    # הצגת התוצאות
     if not products and (product_name_query or stock_val or price_val):
         st.toast("לא נמצאו מוצרים, מציג את כל הרשימה")
         products = all_products
 
 
-    # ---------- גריד מוצרים ----------
+    # ------------------------- item grid ----------------------------
     num_cols = 5
     for i in range(0, len(products), num_cols):
         cols = st.columns(num_cols, gap="medium")
@@ -820,7 +857,7 @@ def show_home_page():
                                 else:
                                     st.session_state["favorites"] = favorites + [p_id]
 
-    # ---------- עגלה Sidebar ----------
+    # -------------------------- sidebar cart -------------------------
     if st.session_state.get("user"):
         load_temp_cart()
         with st.sidebar:
@@ -856,6 +893,7 @@ def show_home_page():
                             # מחיקה מהDB ומ-session_state
                             response = requests.delete(f"{API_URL}/item-in-order/{iio_id}")
                             if response.status_code == 200:
+                                st.toast("פריט הוסר בהצלחה")
                                 st.session_state["cart"].pop(idx)
                                 st.session_state.pop(orig_key, None)
                                 st.session_state.pop(temp_key, None)
@@ -907,6 +945,8 @@ def show_home_page():
                 if st.button("🚀 לתשלום וסגירת הזמנה", use_container_width=True, type="primary"):
                     finalize_checkout()
 
+
+#---------------------------------------------- REGISTER PAGE ---------------------------------------
 def show_register_page():
     render_header()
     st.title("📝 הרשמה לאתר")
@@ -974,6 +1014,10 @@ def show_register_page():
                 st.rerun()
 
 
+
+#---------------------------------------------- LOGIN PAGE ---------------------------------------
+
+
 def show_login_page():
     render_header()
     st.title("🔐 התחברות")
@@ -1026,7 +1070,7 @@ def show_login_page():
 
 
 
-# ---------- ROUTER ----------
+# ----------------------------------------- ROUTER -----------------------------------------
 if st.session_state["page"] == "home":
     show_home_page()
 if st.session_state["page"] == "register":
@@ -1040,6 +1084,7 @@ if st.session_state["page"] == "dashboard":
 if st.session_state["page"] == "chat":
     show_ai_assistant_page()
 
+# ----------------------------------------------------------------------------------
 
 st.divider()
 st.caption("© 2026 Smart Market | כל הזכויות שמורות")
