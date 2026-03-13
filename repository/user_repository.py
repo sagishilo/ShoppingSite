@@ -1,6 +1,5 @@
 from typing import Optional, List
 import json
-
 from model.login_request import LoginRequest
 from model.user_request import UserRequest
 from model.user_response import UserResponse
@@ -10,7 +9,10 @@ from passlib.hash import bcrypt
 all_cache_key = "all_users"
 TABLE_NAME = "users"
 
-## Returns a user by id
+
+
+
+##Returns a specific user by its id
 async def get_by_id(user_id: int) -> Optional[UserResponse]:
     cache_key=f"user_{user_id}"
     if cache_repository.is_key_exists(cache_key):
@@ -37,11 +39,14 @@ async def get_by_id(user_id: int) -> Optional[UserResponse]:
     cache_repository.create_cache_entity(cache_key, user_json)
     return user
 
+
+
+
+##Returns all users
 async def get_all() -> List[UserResponse]:
     if cache_repository.is_key_exists(all_cache_key):
         users_dict = json.loads(cache_repository.get_cache_entity(all_cache_key))
         return [UserResponse(**user) for user in users_dict]
-
 
     query = f"""
         SELECT 
@@ -61,6 +66,9 @@ async def get_all() -> List[UserResponse]:
     return users
 
 
+
+
+##Creates a new user
 async def create_user(new_user: UserRequest, hashed_password: str) -> int:
     query = f"""
         INSERT INTO {TABLE_NAME} 
@@ -78,7 +86,10 @@ async def create_user(new_user: UserRequest, hashed_password: str) -> int:
     return row["id"]
 
 
-## Updates an existing user
+
+
+
+##Updates a specific user
 async def update_user(user_id: int, updated_user: UserRequest, hashed_password: str) -> int:
     cache_key=f"user_{user_id}"
 
@@ -105,7 +116,9 @@ async def update_user(user_id: int, updated_user: UserRequest, hashed_password: 
         return await database.execute(query, values)
 
 
-## Deletes a specific user
+
+
+##Deletes a specific user by its id
 async def delete_user(user_id: int):
     cache_key=f"user_{user_id}"
 
@@ -120,7 +133,7 @@ async def delete_user(user_id: int):
 
 
 
-## Returns a user by user_name
+##Returns a user by its username
 async def get_by_user_name(user_name: str) -> Optional[UserResponse]:
     query = f"""
         SELECT 
@@ -140,6 +153,8 @@ async def get_by_user_name(user_name: str) -> Optional[UserResponse]:
     return UserResponse(**dict(row))
 
 
+
+##Authenticates a user and returns the user id if valid
 async def user_login(login_request: LoginRequest) -> Optional[int]:
     query = f"""
         SELECT id, hashed_password

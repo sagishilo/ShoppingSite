@@ -9,7 +9,7 @@ router = APIRouter(prefix="/item-in-order", tags=["item_in_order"])
 
 ## Returns item_in_order by id
 ## gets -> int
-## returns -> dict
+## returns -> ItemInOrderResponse
 @router.get("/{item_in_order_id}", response_model=ItemInOrderResponse)
 async def get_item_in_order(item_in_order_id: int):
     try:
@@ -23,7 +23,7 @@ async def get_item_in_order(item_in_order_id: int):
 
 ## Returns all items in a specific order
 ## gets -> order_id
-## returns -> List[dict]
+## returns -> List of ItemInOrderResponse
 @router.get("/order/{order_id}")
 async def get_items_by_order_id(order_id: int):
     try:

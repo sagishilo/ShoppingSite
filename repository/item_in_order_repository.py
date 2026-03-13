@@ -8,6 +8,8 @@ from repository.database import database
 
 TABLE_NAME = "item_in_order"
 
+
+##Returns a specific item-in-order by its id
 async def get_by_id(item_in_order_id: int):
     cache_key=f"iio_{item_in_order_id}"
 
@@ -58,6 +60,9 @@ async def get_by_id(item_in_order_id: int):
     return iio
 
 
+
+
+##Returns the order id for a specific item-in-order id
 async def get_order_id_by_iio_id(iio_id: int):
     query = f"SELECT order_id FROM {TABLE_NAME} WHERE id=:iio_id"
     row = await database.fetch_one(query, {"iio_id": iio_id})
@@ -67,6 +72,7 @@ async def get_order_id_by_iio_id(iio_id: int):
 
 
 
+##Checks if a specific item exists in a specific order
 async def is_in_order(item_id: int, order_id: int):
     query = f"""
         SELECT  
@@ -99,18 +105,22 @@ async def is_in_order(item_id: int, order_id: int):
     return None
 
 
+
+##Returns the item-in-order id by item id and order id
 async def get_id_by_item_and_order(item_id: int, order_id: int) -> Optional[int]:
     query = f"SELECT id FROM {TABLE_NAME} WHERE item_id = :item_id AND order_id = :order_id"
     row = await database.fetch_one(query, {"item_id": item_id, "order_id": order_id})
     return row["id"] if row else None
 
 
+##Returns all item ids and amounts for a specific order
 async def get_all_item_ids_by_order(order_id: int):
     query = f"SELECT item_id ,amount_in_order FROM {TABLE_NAME} WHERE order_id = :order_id"
     rows = await database.fetch_all(query, {"order_id": order_id})
     return rows
 
 
+##Returns item-in-order ids, order ids and buyer ids for a specific item
 async def get_iio_ids_order_ids_buyer_ids_by_item_id(item_id: int):
     query = f"""
     SELECT 
@@ -126,7 +136,7 @@ async def get_iio_ids_order_ids_buyer_ids_by_item_id(item_id: int):
 
 
 
-
+##Returns all items in a specific order
 async def get_all_by_order_id(order_id: int):
     cache_key=f"iio_order_{order_id}"
     if cache_repository.is_key_exists(cache_key):
@@ -178,6 +188,8 @@ async def get_all_by_order_id(order_id: int):
     return formatted_results
 
 
+
+##Adds a specific item to an order
 async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
     cache_key=f"iio_order_{item.order_id}"
 
@@ -198,12 +210,12 @@ async def add_item_to_order(item: ItemInOrder) -> Optional[int]:
     cache_repository.remove_cache_entity(f"temp_{buyer_id}")
     cache_repository.remove_cache_entity(f"orders_user_{buyer_id}")
 
-
-
     return new_iio_id
 
 
 
+
+##Updates the amount of a specific item in an order
 async def update_item_amount_in_order(item_in_order: ItemInOrderResponse, new_amount_in_order: int) -> Optional[int]:
     cache_key_iio=f"iio_{item_in_order.id}"
     cache_key_order=f"iio_order_{item_in_order.order_id}"
@@ -226,11 +238,11 @@ async def update_item_amount_in_order(item_in_order: ItemInOrderResponse, new_am
     cache_repository.remove_cache_entity(f"temp_{buyer_id}")
     cache_repository.remove_cache_entity(f"orders_user_{buyer_id}")
 
-
     return rows_updated
 
 
 
+##Deletes a specific item-in-order by its id
 async def delete_item_in_order_by_id(item_in_order_id: int) -> Optional[int]:
     cache_key_iio=f"iio_{item_in_order_id}"
     order_id=await get_order_id_by_iio_id(item_in_order_id)
@@ -255,7 +267,7 @@ async def delete_item_in_order_by_id(item_in_order_id: int) -> Optional[int]:
 
 
 
-
+##Deletes all items-in-order when an order is deleted
 async def order_deleted(order_id: int) -> Optional[int]:
     cache_key_order=f"iio_order_{order_id}"
 
@@ -274,18 +286,16 @@ async def order_deleted(order_id: int) -> Optional[int]:
     cache_repository.remove_cache_entity(f"temp_{buyer_id}")
     cache_repository.remove_cache_entity(f"orders_user_{buyer_id}")
 
-
     await database.execute(query=query, values=values)
 
 
 
+##Deletes all item-in-order records related to a specific item
 async def item_deleted(item_id: int) -> int:
-
     query = f"""
     DELETE FROM {TABLE_NAME}
     WHERE item_id = :item_id;
     """
-
     rows=await get_iio_ids_order_ids_buyer_ids_by_item_id(item_id)
     for row in rows:
         iio_id=row["id"]

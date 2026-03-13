@@ -11,16 +11,19 @@ ex=CustomExceptions()
 
 
 
-##Checks if the wanted item name exists
-## If it does - Return true
+## Checks if item name is unique
+## Returns True if unique, False if it exists
+
 async def validate_unique_item_name(item_name: str) -> bool:
     existing_item = await item_repository.get_by_name(item_name)
     return existing_item is None
 
 
 
-##Checks if the wanted item name exists
-## If it does - Return item by name
+## Checks if an item with the given name exists
+## Raises exception if not found
+## Returns the item by name
+
 async def get_items_by_name(item_name: str) -> ItemResponse:
     item_list= await item_repository.get_by_name(item_name)
     if not item_list:
@@ -28,14 +31,20 @@ async def get_items_by_name(item_name: str) -> ItemResponse:
     return item_list
 
 
-##Checks if the wanted item id exists
-## If it does - Return item by id
+## Checks if an item with the given id exists
+## Raises exception if not found
+## Returns the item by id
+
 async def get_item_by_id(item_id: int) -> ItemResponse:
     item=  await item_repository.get_by_id(item_id)
     if not item:
         raise ex.item_not_found_exception()
     return item
 
+
+## Gets full item details by id
+## Raises exception if not found
+## Returns full item
 
 async def get_full_item(item_id: int) -> Item:
     item=  await item_repository.get_full_item(item_id)
@@ -44,8 +53,10 @@ async def get_full_item(item_id: int) -> Item:
     return item
 
 
-##Checks if the wanted item id exists
-## If it does - Return item amount in stock
+## Checks if an item exists by id
+## Raises exception if not found
+## Returns stock amount
+
 async def get_stock(item_id: int) -> Optional[int]:
     stock=  await item_repository.get_stock(item_id)
     if not stock:
@@ -54,11 +65,17 @@ async def get_stock(item_id: int) -> Optional[int]:
 
 
 ## Returns all items
+## No checks performed
+## Returns list of all items
+
 async def get_all() -> List[ItemResponse]:
     items_list= await item_repository.get_all()
     return items_list
 
 
+## Checks if the new item's name is unique
+## Raises exception if name taken
+## Creates the item and returns its id
 
 async def create_item(new_item: ItemRequest):
     if await validate_unique_item_name(new_item.item_name):
@@ -69,9 +86,11 @@ async def create_item(new_item: ItemRequest):
 
 
 
-## Checks if the wanted item exists
-## If it does - Checks if the given item id matches the updated item's id
-## If ids match - Updates the item
+## Checks if the item exists by id
+## Checks if updated name is unique if changed
+## Raises exceptions if not found or name taken
+## Updates the item and returns result
+
 async def update_item(item_id: int, updated_item: ItemRequest):
     existing_item = await item_repository.get_by_id(item_id)
     if not existing_item:
@@ -84,6 +103,12 @@ async def update_item(item_id: int, updated_item: ItemRequest):
 
 
 
+
+## Checks if the item exists by id
+## Checks if stock is enough for requested amount
+## Raises exception if not enough
+## Updates stock and returns result
+
 async def update_amount(item_id: int, amount_bought: int):
     existing_item = await item_repository.get_full_item(item_id)
     if not existing_item:
@@ -95,8 +120,11 @@ async def update_amount(item_id: int, amount_bought: int):
 
 
 
-## Checks if the wanted item exists
-## Deletes the item
+## Checks if the item exists by id
+## Raises exception if not found
+## Deletes the item and related favorites
+## Returns confirmation message
+
 async def delete_item(item_id: int) -> Optional[str]:
     existing_item = await item_repository.get_by_id(item_id)
     if not existing_item:

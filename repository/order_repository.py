@@ -14,7 +14,7 @@ all_cache_key = "all_orders"
 
 
 
-## Returns an order by id
+##Returns a specific order by its id
 async def get_by_id(order_id: int) -> Optional[OrderResponse]:
 
     cache_key=f"order_{order_id}"
@@ -116,13 +116,14 @@ async def get_by_id(order_id: int) -> Optional[OrderResponse]:
 
 
 
-
+##Returns all order ids for a specific user
 async def get_order_id_by_user_id(buyer_id: int):
     query = f"SELECT id FROM {TABLE_NAME} WHERE buyer_id = :buyer_id"
     rows = await database.fetch_all(query, {"buyer_id": buyer_id})
     return rows
 
 
+##Returns the buyer id for a specific order
 async def get_buyer_id_by_order_id(order_id: int):
     query = f"SELECT buyer_id FROM {TABLE_NAME} WHERE id=:order_id"
     row = await database.fetch_one(query, {"order_id": order_id})
@@ -131,6 +132,8 @@ async def get_buyer_id_by_order_id(order_id: int):
     return int(row["buyer_id"])
 
 
+
+##Returns all orders
 async def get_all() -> List[OrderResponse]:
     if cache_repository.is_key_exists(all_cache_key):
         orders_dict = json.loads(cache_repository.get_cache_entity(all_cache_key))
@@ -232,7 +235,9 @@ async def get_all() -> List[OrderResponse]:
     return all_orders
 
 
-## Returns all orders by user id
+
+
+##Returns all orders for a specific user
 async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
 
     users_order_cache_key = f"orders_user_{buyer_id}"
@@ -338,6 +343,8 @@ async def get_all_by_user(buyer_id: int) -> List[OrderResponse]:
     return all_orders
 
 
+
+##Returns all order ids for a specific user
 async def get_all_id_by_user(buyer_id: int) -> List[int]:
     query_orders = f"SELECT id FROM {TABLE_NAME} WHERE buyer_id = :buyer_id;"
     values = {"buyer_id": buyer_id}
@@ -346,7 +353,7 @@ async def get_all_id_by_user(buyer_id: int) -> List[int]:
 
 
 
-## Creates a new order
+##Creates a new order
 async def create_order(new_order: OrderRequest) -> int:
     query = f"""
     INSERT INTO {TABLE_NAME} (buyer_id, order_date, order_address, order_status)
@@ -366,7 +373,7 @@ async def create_order(new_order: OrderRequest) -> int:
     return last_record_id
 
 
-## Updates an existing order
+##Updates a specific order
 async def update_order(order_id: int, updated_order: OrderRequest) -> int:
     query = f"""
     UPDATE {TABLE_NAME}
@@ -395,7 +402,7 @@ async def update_order(order_id: int, updated_order: OrderRequest) -> int:
     return result
 
 
-## Deletes a specific order
+##Deletes a specific order by its id
 async def delete_order(order_id: int):
     query = f"DELETE FROM {TABLE_NAME} WHERE id = :order_id"
     values = {"order_id": order_id}
@@ -411,6 +418,8 @@ async def delete_order(order_id: int):
     return order_id
 
 
+
+##Deletes all orders for a specific user
 async def delete_orders_for_user(buyer_id: int):
     query = f"DELETE FROM {TABLE_NAME} WHERE buyer_id = :buyer_id"
     values = {"buyer_id": buyer_id}
@@ -425,6 +434,8 @@ async def delete_orders_for_user(buyer_id: int):
     await database.execute(query, values)
 
 
+
+##Returns the temporary order for a specific user
 async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
     temp_order_cache_key = f"temp_{buyer_id}"
     if cache_repository.is_key_exists(temp_order_cache_key):
@@ -521,7 +532,9 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
     return order
 
 
-## close a temp order
+
+
+##Closes a temporary order
 async def close_order(order_id: int):
     query = f"""
         UPDATE {TABLE_NAME}
@@ -546,6 +559,8 @@ async def close_order(order_id: int):
 
 
 
+
+##Returns a summary of closed orders for a specific user
 async def get_closed_orders_summary_by_user(user_id: int) -> List[OrderSummary]:
     query = f"""
     SELECT 

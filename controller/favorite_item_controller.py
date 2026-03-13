@@ -8,7 +8,7 @@ router = APIRouter(prefix="/fav-item", tags=["fav_item"])
 
 
 ## Returns items popularity stats
-## returns -> list
+## returns -> list of an item and how much it was selected as a favorite
 @router.get("/pop/stats")
 async def get_items_popularity_stats():
     try:
@@ -18,7 +18,7 @@ async def get_items_popularity_stats():
         raise HTTPException(status_code=400, detail=str(e))
 
 
-## Returns fav item by user
+## Returns fav items by user
 ## gets -> int
 ## returns -> List of ItemResponse
 @router.get("/{user_id}", response_model=List[ItemResponse])
@@ -44,9 +44,9 @@ async def add_item_to_fav(fav: FavoriteItemRequest):
 
 
 
-## Deletes a specific item from fav
+## removes a specific item from fav
 ## gets -> JSON of fav
-## returns -> int (deleted fav id)
+## returns -> int (removed fav id)
 @router.delete("/remove/fav", response_model=Optional[int])
 async def unfav_item(fav: FavoriteItemRequest):
     try:

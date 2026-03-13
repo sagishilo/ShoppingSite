@@ -5,15 +5,24 @@ from model.user_request import UserRequest
 from model.user_response import UserResponse
 from repository import user_repository
 from passlib.context import CryptContext
-
 from repository.database import database
 from service import order_service, favorite_item_service, item_in_order_service
-
 ex=CustomExceptions()
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
+
+
+## Hashes a plain password
+## Returns hashed password
+
 def get_password_hash(password: str) -> str:
     return bcrypt_context.hash(password)
+
+
+
+## Verifies a plain password against a hash
+## Returns True if matched, False otherwise
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt_context.verify(plain_password, hashed_password)
@@ -21,9 +30,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 
+## Checks if username exists
+## Raises exception if not found
 
-##Checks if the wanted username exists
-## If it does - Return user by username
 async def get_user_by_user_name(user_name: str) -> UserResponse:
     user= await user_repository.get_by_user_name(user_name)
     if not user:
@@ -31,16 +40,19 @@ async def get_user_by_user_name(user_name: str) -> UserResponse:
     return user
 
 
-##Checks if the wanted username exists
-## If it does - Return true
+
+## Checks if username is unique
+## Returns True if unique, False otherwise
+
 async def validate_unique_user_name(user_name: str) -> bool:
     existing_user = await user_repository.get_by_user_name(user_name)
     return existing_user is None
 
 
 
-##Checks if the wanted user exists
-## If it does - Return user by id
+## Checks if user exists by id
+## Raises exception if not found
+
 async def get_by_id(user_id: int) -> Optional[UserResponse]:
     user = await user_repository.get_by_id(user_id)
     if not user:
@@ -57,8 +69,9 @@ async def get_all() -> List[UserResponse]:
 
 
 
-## Checks if the wanted user exists
-## If it doesn't - Creates a new user
+## Creates a new user
+## Checks username uniqueness, hashes password, saves user
+
 async def create_user(new_user: UserRequest) -> UserResponse:
     if await validate_unique_user_name(new_user.user_name):
         hashed_password = get_password_hash(new_user.password)
@@ -69,9 +82,12 @@ async def create_user(new_user: UserRequest) -> UserResponse:
         raise ex.username_taken_exception()
 
 
-## Checks if the wanted user exists
-## If it does - Checks if the given user id matches the updated user's id
-## If ids match - Updates the user
+
+
+
+## Updates an existing user
+## Checks user existence, username uniqueness, hashes new password
+
 async def update_user(user_id: int, updated_user: UserRequest):
     existing_user = await user_repository.get_by_id(user_id)
     if not existing_user:
@@ -85,26 +101,20 @@ async def update_user(user_id: int, updated_user: UserRequest):
 
 
 
-## Checks if the wanted user exists
-## Deletes the user and all his data
+## Deletes a user and all related data
+## Checks user existence, deletes favorites, orders, items, user
+
 async def delete_user(user_id: int) -> Optional[str]:
     existing_user = await user_repository.get_by_id(user_id)
     if not existing_user:
         raise ex.user_not_found_exception()
     async with database.transaction():
-
-        # מחיקת מועדפים
         await favorite_item_service.unfav_items_for_user(user_id)
-
-        # מחיקת תוכן ההזמנות
         order_ids = await order_service.get_all_id_by_user(user_id)
         for o in order_ids:
             await item_in_order_service.delete_item_in_order_by_order_id(o)
 
-        # מחיקת ההזמנות עצמן
         await order_service.delete_orders_for_user(user_id)
-
-        # מחיקת המשתמש
         await user_repository.delete_user(user_id)
 
     return f"The user with id {user_id} and all associated data were deleted"
@@ -112,6 +122,8 @@ async def delete_user(user_id: int) -> Optional[str]:
 
 
 
+## Logs in a user
+## Verifies credentials, returns user if valid, raises exception if not found
 
 async def user_login(login_request: LoginRequest) -> Optional[UserResponse]:
     user_id = await user_repository.user_login(login_request)

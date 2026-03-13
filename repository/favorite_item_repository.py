@@ -7,7 +7,7 @@ from repository.database import database
 
 TABLE_NAME = "favorites_items"
 
-##
+##Returns all favorite items for a specific user
 async def get_all_by_user_id(user_id: int) -> List[ItemResponse]:
     cache_key = f"fav_items_{user_id}"
 
@@ -44,6 +44,7 @@ async def get_all_by_user_id(user_id: int) -> List[ItemResponse]:
     return formatted_results
 
 
+##Returns items ordered by popularity based on favorites count
 async def get_items_popularity_stats():
     query = f"""
     SELECT 
@@ -69,6 +70,7 @@ async def get_items_popularity_stats():
     ]
 
 
+##Adds a specific item to a user's favorites
 async def add_item_to_fav(fav: FavoriteItemRequest) -> Optional[int]:
     cache_key = f"fav_items_{fav.user_id}"
 
@@ -86,7 +88,7 @@ async def add_item_to_fav(fav: FavoriteItemRequest) -> Optional[int]:
 
 
 
-##Deletes a specific item
+##Deletes a specific item by its id
 async def delete_item(item_id: int):
     query = f"DELETE FROM {TABLE_NAME} WHERE item_id= :item_id"
     values ={"item_id":item_id }
@@ -95,7 +97,7 @@ async def delete_item(item_id: int):
     return item_id
 
 
-##Removes a specific item from fav
+##Removes a specific item from favorites
 async def unfav_item(fav: FavoriteItemRequest):
     cache_key = f"fav_items_{fav.user_id}"
 
@@ -107,7 +109,7 @@ async def unfav_item(fav: FavoriteItemRequest):
     return fav.id
 
 
-
+##Removes all favorite items for a specific user
 async def unfav_items_for_user(user_id: int):
     cache_key = f"fav_items_{user_id}"
 
@@ -117,7 +119,7 @@ async def unfav_items_for_user(user_id: int):
     cache_repository.remove_cache_entity(cache_key)
 
 
-
+##Checks if a specific item is in the user's favorites
 async def is_fav(fav: FavoriteItemRequest):
     query = f"SELECT * FROM {TABLE_NAME} WHERE user_id= :user_id AND item_id= :item_id"""
     values = {"user_id": fav.user_id,

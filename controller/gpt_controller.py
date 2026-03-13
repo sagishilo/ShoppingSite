@@ -6,8 +6,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
 router = APIRouter(prefix="/gpt", tags=["gpt"])
+
+##returns a full content according to the data
+## gets -> user id (int)
+## returns -> dict
 
 @router.get("/content/{user_id}")
 async def get_assistant_context(user_id: int):

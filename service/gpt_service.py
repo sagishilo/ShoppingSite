@@ -1,5 +1,12 @@
 from service import item_service, order_service
 
+
+
+
+## Receives a user id
+## Fetches all products and the user's order history, formats them into a readable context
+## Returns a dictionary containing the assistant context as a string
+
 async def get_assistant_context(user_id: int):
     try:
         products = await item_service.get_all() or []

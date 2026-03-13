@@ -7,7 +7,9 @@ from service import order_service
 
 router = APIRouter(prefix="/order", tags=["order"])
 
-
+## Returns closed orders summary for a specific user
+## gets -> int (buyer_id)
+## returns -> List of OrderSummary
 @router.get("/user/closed/{buyer_id}", response_model=List[OrderSummary])
 async def get_closed_orders_summary_by_user(buyer_id: int):
     try:
@@ -30,7 +32,7 @@ async def get_order(order_id: int):
 
 
 ## Returns all orders
-## returns -> List[OrderResponse]
+## returns -> List of OrderResponse
 @router.get("/", response_model=List[OrderResponse])
 async def get_orders():
     try:
@@ -39,9 +41,9 @@ async def get_orders():
         raise HTTPException(status_code=400, detail=str(e))
 
 
-## Returns all orders for user
-## Gets a user ID -> int
-## returns -> List[Order]
+## Returns all orders for a specific user
+## gets -> int (user_id)
+## returns -> List of OrderResponse
 @router.get("/user/{user_id}", response_model=List[OrderResponse])
 async def get_orders_for_user(user_id: int):
     try:
@@ -52,7 +54,7 @@ async def get_orders_for_user(user_id: int):
 
 
 ## Creates a new order
-## gets -> JSON of Order
+## gets -> JSON of OrderRequest
 ## returns -> int (order id)
 @router.post("/", response_model=int)
 async def create_order(order: OrderRequest):
@@ -101,7 +103,9 @@ async def get_temp_order_by_buyer(buyer_id: int):
 
 
 
-
+## Closes a specific order by id
+## gets -> int (order_id)
+## returns -> bool
 @router.put("/close/{order_id}", response_model=bool)
 async def close_order(order_id: int):
     try:

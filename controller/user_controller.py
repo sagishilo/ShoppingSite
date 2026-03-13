@@ -11,6 +11,9 @@ from service import user_service
 router = APIRouter(prefix="/user", tags=["user"])
 
 
+## Logs in a user
+## gets -> JSON of LoginRequest
+## returns -> UserResponse
 @router.post("/auth/login", response_model=UserResponse)
 async def login_endpoint(request: LoginRequest):
     user = await user_service.user_login(request)
@@ -20,9 +23,9 @@ async def login_endpoint(request: LoginRequest):
     raise HTTPException(status_code=400, detail="Invalid credentials")
 
 
-## Returns user
-## gets-> int
-## returns -> User
+## Returns a user by id
+## gets -> int
+## returns -> UserResponse
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(user_id: int):
     try:
@@ -31,8 +34,8 @@ async def get_user(user_id: int):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-##Returns all users
-## returns -> List of Users
+## Returns all users
+## returns -> List of UserResponse
 @router.get("/", response_model=List[UserResponse])
 async def get_users():
     try:
@@ -42,8 +45,8 @@ async def get_users():
 
 
 
-##Creates a new user
-## gets-> JSON of User
+## Creates a new user
+## gets -> JSON of UserRequest
 ## returns -> int (user id)
 @router.post("/")
 async def create_user(user: UserRequest):
@@ -55,8 +58,8 @@ async def create_user(user: UserRequest):
 
 
 
-##Deletes a specific user and all votes they have made
-## gets-> int (user id)
+## Deletes a specific user and all their related data
+## gets -> int (user_id)
 ## returns -> str message
 @router.delete("/{user_id}", response_model=str)
 async def delete_user(user_id: int):
@@ -69,8 +72,8 @@ async def delete_user(user_id: int):
 
 
 ## Updates an existing user
-## gets -> JSON of User
-## returns -> User
+## gets -> JSON of UserRequest and int (user_id)
+## returns -> str message
 @router.put("/{user_id}", response_model=str)
 async def update_user(user_id: int, updated_user: UserRequest):
     try:

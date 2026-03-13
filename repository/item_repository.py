@@ -8,7 +8,9 @@ from repository.database import database
 all_cache_key = "all_items"
 TABLE_NAME = "item"
 
-## Returns an item by id
+
+
+##Returns a specific item by its id
 async def get_by_id(item_id: int) ->Optional[ItemResponse]:
     cache_key=f"item_{item_id}"
     if cache_repository.is_key_exists(cache_key):
@@ -36,6 +38,8 @@ async def get_by_id(item_id: int) ->Optional[ItemResponse]:
         return None
 
 
+
+##Returns the full item object by its id
 async def get_full_item(item_id: int) ->Optional[Item]:
     query = f"""
     SELECT *
@@ -49,6 +53,8 @@ async def get_full_item(item_id: int) ->Optional[Item]:
         return None
 
 
+
+##Returns the stock amount for a specific item
 async def get_stock(item_id: int) ->Optional[int]:
     query = f"""
     SELECT amount_in_stock
@@ -62,7 +68,7 @@ async def get_stock(item_id: int) ->Optional[int]:
         return None
 
 
-## Returns an items by accurate name
+##Returns an item by its exact name
 async def get_by_name(item_name: str) -> Optional[ItemResponse]:
     query = f"SELECT * FROM {TABLE_NAME} WHERE item_name = :item_name"
     row = await database.fetch_one(query, values={"item_name": item_name})
@@ -70,7 +76,9 @@ async def get_by_name(item_name: str) -> Optional[ItemResponse]:
         return ItemResponse(**row)
     return None
 
-## Returns an items by partial name
+
+
+##Returns items by partial name match
 async def search_by_name(item_name: str) -> list[ItemResponse]:
     query = f"""
     SELECT *
@@ -83,7 +91,9 @@ async def search_by_name(item_name: str) -> list[ItemResponse]:
     return [ItemResponse(**row) for row in results]
 
 
-## Returns all items
+
+
+##Returns all items
 async def get_all() ->List[ItemResponse]:
     if cache_repository.is_key_exists(all_cache_key):
         items_dict = json.loads(cache_repository.get_cache_entity(all_cache_key))
@@ -107,7 +117,9 @@ async def get_all() ->List[ItemResponse]:
         return items
 
 
-## Creates a new item
+
+
+##Creates a new item
 async def create_item(new_item: ItemRequest) -> Optional[int]:
     query = f"""
     INSERT INTO {TABLE_NAME} (item_name, price, amount_in_stock,image_url)
@@ -126,7 +138,7 @@ async def create_item(new_item: ItemRequest) -> Optional[int]:
 
 
 
-## Updates an existing item
+##Updates a specific item by its id
 async def update_item(id: int, updated_item: ItemRequest) -> int:
     cache_key=f"item_{id}"
 
@@ -154,7 +166,9 @@ async def update_item(id: int, updated_item: ItemRequest) -> int:
     return result
 
 
-## Updates an existing item's amount
+
+
+##Updates the stock amount of a specific item
 async def update_amount(id: int, updated_amount: int) -> int:
     cache_key=f"item_{id}"
 
@@ -166,9 +180,8 @@ async def update_amount(id: int, updated_amount: int) -> int:
     """
     values = {
         "amount_in_stock":updated_amount,
-        "id": id,
+        "id": id
     }
-
     async with database.transaction():
         result = await database.execute(query, values)
         cache_repository.remove_cache_entity(cache_key)
@@ -179,7 +192,7 @@ async def update_amount(id: int, updated_amount: int) -> int:
 
 
 
-##Deletes a specific item
+##Deletes a specific item by its id
 async def delete_item(item_id: int):
     cache_key=f"item_{item_id}"
 

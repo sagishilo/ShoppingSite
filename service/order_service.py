@@ -11,20 +11,26 @@ from service import item_in_order_service
 ex = CustomExceptions()
 
 
-## Checks if an order exists by id
+## Checks if order exists by id
 ## Returns True if exists, False otherwise
+
 async def validate_order_exists(order_id: int) -> bool:
     existing_order = await order_repository.get_by_id(order_id)
     return existing_order is not None
 
-## Checks if a user exists by id
+
+
+## Checks if user exists by id
 ## Returns True if exists, False otherwise
 async def validate_user_exists(user_id: int) -> bool:
     user = await user_repository.get_by_id(user_id)
     return user is not None
 
-## Checks if the order status is valid
+
+
+## Checks if order status is valid
 ## Returns True if valid, False otherwise
+
 async def validate_order_status(status: str) -> bool:
     try:
         OrderStatus(status)
@@ -32,20 +38,31 @@ async def validate_order_status(status: str) -> bool:
     except ValueError:
         return False
 
+
+
+
 ## Returns all orders
+
 async def get_all() -> List[OrderResponse]:
     orders_list= await order_repository.get_all()
     return orders_list
 
+
+
 ## Returns all closed orders for user
+## Raises exception if user not found
+
 async def get_closed_orders_summary_by_user(user_id: int) -> List[OrderSummary]:
     if not await validate_user_exists(user_id):
         raise ex.user_not_found_exception()
     orders_list= await order_repository.get_closed_orders_summary_by_user(user_id)
     return orders_list
 
-## Returns an order by id
-## Raises an exception if order is not found
+
+
+## Returns order by id
+## Raises exception if order not found
+
 async def get_order_by_id(order_id: int) -> OrderResponse:
     order = await order_repository.get_by_id(order_id)
     if not order:
@@ -53,14 +70,18 @@ async def get_order_by_id(order_id: int) -> OrderResponse:
     return order
 
 
-## Returns all orders
 ## Returns all orders for a specific user
-## Raises an exception if user not found
+## Raises exception if user not found
+
 async def get_all_orders_by_user(buyer_id: int) -> List[OrderResponse]:
     if not await validate_user_exists(buyer_id):
         raise ex.user_not_found_exception()
     return await order_repository.get_all_by_user(buyer_id)
 
+
+
+## Returns all order ids for a specific user
+## Raises exception if user not found
 
 async def get_all_id_by_user(buyer_id: int) -> List[int]:
     if not await validate_user_exists(buyer_id):
@@ -70,7 +91,8 @@ async def get_all_id_by_user(buyer_id: int) -> List[int]:
 
 
 ## Creates a new order
-## Checks if user exists and order status is valid
+## Checks user existence, status validity, and temp order uniqueness
+
 async def create_order(new_order: OrderRequest) -> int:
     if not await validate_user_exists(new_order.buyer_id):
         raise ex.user_not_found_exception()
@@ -84,7 +106,8 @@ async def create_order(new_order: OrderRequest) -> int:
 
 
 ## Updates an existing order
-## Checks if order exists, user exists, and order status is valid
+## Checks order existence, user existence, and status validity
+
 async def update_order(order_id: int, updated_order: OrderRequest) -> int:
     if not await validate_order_exists(order_id):
         raise ex.order_not_found_exception()
@@ -96,8 +119,9 @@ async def update_order(order_id: int, updated_order: OrderRequest) -> int:
 
 
 
-## Deletes an order and all it's items
-## Raises an exception if order does not exist
+## Deletes an order and all its items
+## Raises exception if order does not exist
+
 async def delete_order(order_id: int) -> Optional[str]:
     if not await validate_order_exists(order_id):
         raise ex.order_not_found_exception()
@@ -108,13 +132,19 @@ async def delete_order(order_id: int) -> Optional[str]:
     return f"The order with id {order_id} was deleted"
 
 
+
+## Deletes all orders for a user
+## Raises exception if user does not exist
+
 async def delete_orders_for_user(buyer_id: int):
     if not await validate_user_exists(buyer_id):
         raise ex.user_not_found_exception()
     await order_repository.delete_orders_for_user(buyer_id)
 
 
-##gets the open order by user id
+## Gets the open (temp) order by user id
+## Returns None if not found
+
 async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
     temp_order=await order_repository.get_temp_order_by_user(buyer_id)
     if temp_order is not None:
@@ -122,8 +152,9 @@ async def get_temp_order_by_user(buyer_id: int) -> Optional[OrderResponse]:
     else:
         return None
 
-## Updates an existing temp order as close
-## Checks if order exists
+## Closes a temp order
+## Checks order existence and updates stock
+
 async def close_order(order_id: int):
     if await validate_order_exists(order_id):
         await item_in_order_service.stock_update(order_id)

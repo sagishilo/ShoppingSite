@@ -20,7 +20,7 @@ async def get_item_by_id(id: int):
 
 ## Returns an item by name
 ## gets -> str
-## returns -> ItemResponse
+## returns -> list of ItemResponse
 @router.get("/item_name/{item_name}", response_model=List[ItemResponse])
 async def get_item_by_name(item_name: str):
     try:
@@ -33,7 +33,7 @@ async def get_item_by_name(item_name: str):
 
 
 ## Returns all items
-## returns -> List[ItemResponse]
+## returns -> List of ItemResponse
 @router.get("/", response_model=List[ItemResponse])
 async def get_items():
     try:
@@ -43,7 +43,7 @@ async def get_items():
 
 
 ## Creates a new item
-## gets -> JSON of Item
+## gets -> JSON of ItemRequest
 ## returns -> int (item id)
 @router.post("/", response_model=Optional[int])
 async def create_item(item: ItemRequest):
@@ -55,7 +55,7 @@ async def create_item(item: ItemRequest):
 
 
 ## Updates an existing item
-## gets -> JSON of Item
+## gets -> JSON of ItemRequest and id (int)
 ## returns -> str message
 @router.put("/{id}", response_model=str)
 async def update_item(id: int, updated_item: ItemRequest):
