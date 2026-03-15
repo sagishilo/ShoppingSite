@@ -275,7 +275,7 @@ def show_user_dashboard():
                 res_delete = requests.delete(f"{API_URL}/user/{user_id}", timeout=10)
 
                 if res_delete.status_code == 200:
-                    st.success("החשבון נמחק בהצלחה. להתראות!")
+                    st.success("החשבון נמחק בהצלחה. להתראות")
                     # ניקוי ה-Session State כדי לנתק את המשתמש
                     st.session_state.clear()
 
@@ -801,8 +801,32 @@ def show_home_page():
         for j, product in enumerate(products[i:i+num_cols]):
             with cols[j]:
                 # תמונת מוצר
+                IMAGE_HEIGHT = "200px"
+
                 img_url = product.get("image_url") or "https://katzr.net/a0cf43"
-                st.image(img_url, use_container_width=True)
+
+                st.markdown(
+                    f"""
+                    <div style="
+                        height: {IMAGE_HEIGHT}; 
+                        width: 100%; 
+                        display: flex; 
+                        justify-content: center; 
+                        align-items: center; 
+                        overflow: hidden;
+                        border: 1px solid #f0f2f6; /* אופציונלי: מסגרת קלה */
+                        border-radius: 5px; /* אופציונלי: פינות מעוגלות */
+                    ">
+                        <img src="{img_url}" style="
+                            height: 100%; 
+                            width: auto; 
+                            max-width: 100%; 
+                            object-fit: contain;
+                        ">
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
                 # שם, מחיר וכמות במלאי
                 st.markdown(f"**{product['item_name']}**")
@@ -1047,7 +1071,7 @@ def show_login_page():
             )
 
             if res.status_code == 200:
-                st.success("✅ התחברת בהצלחה!")
+                st.success("✅ התחברת בהצלחה")
                 user_data = res.json()
                 st.session_state["user"] = user_data
                 st.session_state["page"] = "home"

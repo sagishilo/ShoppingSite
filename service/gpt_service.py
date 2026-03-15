@@ -1,4 +1,4 @@
-from service import item_service, order_service
+from service import item_service, order_service, favorite_item_service
 
 
 
@@ -8,6 +8,9 @@ from service import item_service, order_service
 ## Returns a dictionary containing the assistant context as a string
 
 async def get_assistant_context(user_id: int):
+
+
+
     try:
         products = await item_service.get_all() or []
     except Exception as e:
@@ -22,6 +25,35 @@ async def get_assistant_context(user_id: int):
             product_info += line
         except Exception as e:
             print(f"[ERROR] Failed product line: {p} | {e}")
+
+
+
+    try:
+        fav = await favorite_item_service.get_all_by_user_id(user_id) or []
+        stats= await favorite_item_service.get_items_popularity_stats() or []
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch favorites: {e}")
+        fav = []
+        stats=[]
+
+    favorite_info = "FAVORITES ITEMS:\n"
+    for f in fav:
+        try:
+            name=f"Favorite item name: {f.item_name} \n"
+            favorite_info += name
+        except Exception as e:
+            print(f"[ERROR] Failed favorite line: {f} | {e}")
+
+    for s in stats:
+        try:
+            name=f"Favorite item name: {s['name']} \n"
+            fav_count=f"{s['favorites_count']} voted it as favorite \n"
+            line=f"{name}  {fav_count}"
+            favorite_info += line
+        except Exception as e:
+            print(f"[ERROR] Failed favorite line: {s} | {e}")
+
+
 
     try:
         orders = await order_service.get_all_orders_by_user(user_id) or []
@@ -47,6 +79,9 @@ async def get_assistant_context(user_id: int):
         except Exception as e:
             print(f"[ERROR] Failed order line: {o} | {e}")
 
+
+
+
     try:
         full_context = (
             "You are an expert shopping assistant. Your goal is to help users by providing technical data, "
@@ -54,6 +89,7 @@ async def get_assistant_context(user_id: int):
             " Use the information below:\n\n"
             f"{product_info}\n"
             f"{order_info}\n"
+            f"{favorite_info}\n"
             "Rules:\n- "
             "If asked about a product not listed, say we don't have it.\n"
             "If asked about orders, use the user history.\n"
