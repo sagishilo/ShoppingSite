@@ -47,7 +47,6 @@ Each product includes:
 * Image
 * Name
 * Price
-* Available stock
 * Add to cart button
 * Favorite button
 
@@ -68,6 +67,7 @@ The shopping cart contains all items added to the current open order.
 Users can:
 
 * View items in the cart
+* Increase or decreas amount
 * Remove items
 * Complete the order
 
@@ -117,14 +117,9 @@ One of the main features of the system is the **AI assistant**.
 It analyzes the user’s:
 
 * Order history
-* Favorite items
 * Shopping patterns
+* Products info
 
-Then provides insights such as:
-
-* Product recommendations
-* Shopping behavior analysis
-* Personalized suggestions
 
 ### AI Assistant Limitations
 
@@ -146,7 +141,7 @@ Below is a breakdown of the main UI buttons and their functionality.
 | -------- | ----------------------- |
 | Login    | Opens login page        |
 | Register | Opens registration page |
-| Products | Opens product catalog   |
+| Home page| Opens product catalog   |
 
 ---
 
@@ -155,10 +150,8 @@ Below is a breakdown of the main UI buttons and their functionality.
 | Button       | Function                                 |
 | ------------ | ---------------------------------------- |
 | Home         | Returns to the home page                 |
-| Products     | Opens the product catalog                |
 | Cart         | Opens the current cart                   |
-| Favorites    | Opens favorites page                     |
-| Orders       | Displays order history                   |
+| Personal page| Opens personal page                      |
 | AI Assistant | Opens the AI analysis page               |
 | Logout       | Logs the user out and clears the session |
 
@@ -175,10 +168,12 @@ Below is a breakdown of the main UI buttons and their functionality.
 
 ## 🛒 Cart Page Buttons
 
-| Button         | Function               |
-| -------------- | ---------------------- |
-| Remove Item    | Removes item from cart |
-| Complete Order | Closes the order       |
+| Button         | Function                 |
+| -------------- | -------------------------|
+| Remove Item    | Removes item from cart   |
+| Increase Item  | Add 1 to the amount      |
+| Decreas Item   | Removes 1 from the amount|
+| Complete Order | Closes the order         |
 
 ---
 
@@ -187,7 +182,7 @@ Below is a breakdown of the main UI buttons and their functionality.
 | Button       | Function                      |
 | ------------ | ----------------------------- |
 | Ask Question | Sends a question to the AI    |
-| Clear Chat   | Resets assistant conversation |
+
 
 ---
 
@@ -199,6 +194,9 @@ Below is a breakdown of the main UI buttons and their functionality.
 * FastAPI
 * Pydantic
 * SQLAlchemy
+
+## Cathing
+* Redis
 
 ## Frontend
 
@@ -220,6 +218,7 @@ The AI assistant receives structured information including:
 
 * User favorites
 * Closed orders
+* Temp order
 * Purchased items
 * Shopping statistics
 
@@ -250,8 +249,8 @@ Or configure it inside your local environment.
 ## 1️⃣ Clone the repository
 
 ```
-git clone https://github.com/yourusername/ai-shopping-assistant.git
-cd ai-shopping-assistant
+git clone https://github.com/sagishilo/ShoppingSite
+cd gpt_service
 ```
 
 ---
@@ -271,7 +270,7 @@ Create a MySQL database and update the connection configuration in the backend.
 Example:
 
 ```
-DATABASE_URL=mysql+pymysql://user:password@localhost/shopping_db
+DATABASE_URL = mysql+aiomysql://"user":"password"@"localhost":"3306"/"main"
 ```
 
 ---
@@ -298,18 +297,32 @@ streamlit run streamlit_app.py
 project/
 │
 ├── backend/
-│   ├── main.py
-│   ├── models.py
-│   ├── database.py
-│   ├── routes/
-│   └── services/
 │
-├── UI/
-│   └── streamlit_app.py
+├── config/            # Configuration files (database connection, settings, etc.)
 │
-├── requirements.txt
+├── controller/        # API endpoints and request handling (FastAPI routes)
+│
+├── model/             # Data models and schemas used in the application
+│
+├── photos/            # Images used by the website
+│
+├── repository/        # Database queries and data access layer
+│
+├── resources/         # Additional resources used by the backend
+│
+├── service/           # Business logic and application services
+│
+├── UI/                # Streamlit frontend application
+│
+├── .env               # Environment variables (API keys, database credentials)
+│
+├── .gitignore         # Files ignored by Git
+│
+├── docker-compose.yaml # Docker configuration for running services
+│
+└── main.py            # Main FastAPI application entry point
+
 └── README.md
-```
 
 ---
 
