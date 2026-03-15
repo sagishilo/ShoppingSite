@@ -326,6 +326,21 @@ project/
 
 ---
 
+# Active Users (test users)
+
+#16
+* user_name: aaa
+* password: aaa
+
+#17
+* user_name: ש
+* password: ש
+---
+
+
+
+---
+
 # 🔒 Security Notes
 
 * API keys are **not stored in the repository**
