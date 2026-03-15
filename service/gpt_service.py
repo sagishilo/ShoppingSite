@@ -44,14 +44,6 @@ async def get_assistant_context(user_id: int):
         except Exception as e:
             print(f"[ERROR] Failed favorite line: {f} | {e}")
 
-    for s in stats:
-        try:
-            name=f"Favorite item name: {s['name']} \n"
-            fav_count=f"{s['favorites_count']} voted it as favorite \n"
-            line=f"{name}  {fav_count}"
-            favorite_info += line
-        except Exception as e:
-            print(f"[ERROR] Failed favorite line: {s} | {e}")
 
 
 
